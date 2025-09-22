@@ -1,105 +1,178 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import 'xp.css/dist/XP.css';
 
-/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
-All colors MUST be HSL.
-*/
-
-@layer base {
-  :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
-
-    --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
-
-    --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
-
-    --primary: 222.2 47.4% 11.2%;
-    --primary-foreground: 210 40% 98%;
-
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
-
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
-
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
-
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
-
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 222.2 84% 4.9%;
-
-    --radius: 0.5rem;
-
-    --sidebar-background: 0 0% 98%;
-
-    --sidebar-foreground: 240 5.3% 26.1%;
-
-    --sidebar-primary: 240 5.9% 10%;
-
-    --sidebar-primary-foreground: 0 0% 98%;
-
-    --sidebar-accent: 240 4.8% 95.9%;
-
-    --sidebar-accent-foreground: 240 5.9% 10%;
-
-    --sidebar-border: 220 13% 91%;
-
-    --sidebar-ring: 217.2 91.2% 59.8%;
-  }
-
-  .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
-
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
-
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
-
-    --primary: 210 40% 98%;
-    --primary-foreground: 222.2 47.4% 11.2%;
-
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
-
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
-
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
-
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
-
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 212.7 26.8% 83.9%;
-    --sidebar-background: 240 5.9% 10%;
-    --sidebar-foreground: 240 4.8% 95.9%;
-    --sidebar-primary: 224.3 76.3% 48%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 3.7% 15.9%;
-    --sidebar-accent-foreground: 240 4.8% 95.9%;
-    --sidebar-border: 240 3.7% 15.9%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
-  }
+/* Windows XP Design System */
+:root {
+  /* XP Colors */
+  --xp-blue: 195 100% 30%;
+  --xp-blue-light: 195 100% 40%;
+  --xp-blue-dark: 195 100% 20%;
+  --xp-green: 120 60% 35%;
+  --xp-orange: 30 100% 50%;
+  --xp-red: 0 85% 50%;
+  --xp-gray: 210 10% 85%;
+  --xp-gray-dark: 210 10% 60%;
+  --xp-gray-light: 210 10% 95%;
+  --xp-silver: 210 5% 90%;
+  
+  /* Background gradients */
+  --xp-desktop-bg: linear-gradient(to bottom, hsl(195 100% 40%), hsl(195 100% 20%));
+  --xp-window-bg: linear-gradient(to bottom, hsl(210 5% 98%), hsl(210 5% 92%));
+  --xp-taskbar-bg: linear-gradient(to bottom, hsl(195 100% 35%), hsl(195 100% 25%));
+  --xp-button-bg: linear-gradient(to bottom, hsl(210 5% 95%), hsl(210 5% 85%));
+  --xp-button-hover: linear-gradient(to bottom, hsl(195 100% 45%), hsl(195 100% 35%));
+  
+  /* Text colors */
+  --xp-text: 210 20% 15%;
+  --xp-text-white: 0 0% 100%;
+  --xp-text-muted: 210 10% 40%;
+  
+  /* Borders and shadows */
+  --xp-border: 210 10% 70%;
+  --xp-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  --xp-shadow-heavy: 0 4px 16px rgba(0, 0, 0, 0.25);
 }
 
-@layer base {
-  * {
-    @apply border-border;
-  }
+body {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  background: var(--xp-desktop-bg);
+  color: hsl(var(--xp-text));
+  margin: 0;
+  padding: 0;
+  min-height: 100vh;
+}
 
-  body {
-    @apply bg-background text-foreground;
-  }
+/* Custom XP-styled components */
+.xp-window {
+  background: var(--xp-window-bg);
+  border: 2px outset hsl(var(--xp-gray));
+  border-radius: 8px 8px 0 0;
+  box-shadow: var(--xp-shadow-heavy);
+}
+
+.xp-titlebar {
+  background: var(--xp-taskbar-bg);
+  color: hsl(var(--xp-text-white));
+  padding: 8px 16px;
+  font-weight: bold;
+  border-radius: 6px 6px 0 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.xp-button {
+  background: var(--xp-button-bg);
+  border: 1px outset hsl(var(--xp-gray));
+  padding: 6px 16px;
+  border-radius: 3px;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.1s ease;
+}
+
+.xp-button:hover {
+  background: var(--xp-button-hover);
+  color: hsl(var(--xp-text-white));
+}
+
+.xp-button:active {
+  border: 1px inset hsl(var(--xp-gray));
+  transform: translateY(1px);
+}
+
+.xp-input {
+  border: 2px inset hsl(var(--xp-gray));
+  padding: 8px;
+  background: hsl(var(--xp-gray-light));
+  font-family: inherit;
+  border-radius: 2px;
+}
+
+.xp-input:focus {
+  outline: 2px solid hsl(var(--xp-blue));
+  outline-offset: 1px;
+}
+
+.xp-menu {
+  background: hsl(var(--xp-gray-light));
+  border: 1px outset hsl(var(--xp-gray));
+  box-shadow: var(--xp-shadow);
+}
+
+.xp-menu-item {
+  padding: 8px 16px;
+  cursor: pointer;
+  border-bottom: 1px solid hsl(var(--xp-border));
+}
+
+.xp-menu-item:hover {
+  background: hsl(var(--xp-blue-light));
+  color: hsl(var(--xp-text-white));
+}
+
+.xp-toolbar {
+  background: var(--xp-button-bg);
+  border-bottom: 1px solid hsl(var(--xp-border));
+  padding: 8px;
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+
+.xp-status-bar {
+  background: hsl(var(--xp-gray));
+  border-top: 1px inset hsl(var(--xp-border));
+  padding: 4px 8px;
+  font-size: 12px;
+  color: hsl(var(--xp-text-muted));
+}
+
+.xp-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: hsl(var(--xp-gray-light));
+}
+
+.xp-table th {
+  background: var(--xp-button-bg);
+  border: 1px outset hsl(var(--xp-gray));
+  padding: 8px;
+  text-align: left;
+  font-weight: bold;
+}
+
+.xp-table td {
+  border: 1px solid hsl(var(--xp-border));
+  padding: 8px;
+}
+
+.xp-table tr:hover {
+  background: hsl(var(--xp-blue-light) / 0.1);
+}
+
+.xp-icon {
+  width: 16px;
+  height: 16px;
+  display: inline-block;
+  vertical-align: middle;
+  margin-right: 8px;
+}
+
+.xp-start-button {
+  background: var(--xp-taskbar-bg);
+  color: hsl(var(--xp-text-white));
+  border: 2px outset hsl(var(--xp-gray));
+  padding: 4px 12px;
+  border-radius: 0 8px 8px 0;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.1s ease;
+}
+
+.xp-start-button:hover {
+  background: var(--xp-button-hover);
+}
+
+.xp-start-button:active {
+  border: 2px inset hsl(var(--xp-gray));
 }
