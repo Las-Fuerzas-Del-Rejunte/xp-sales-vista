@@ -23,7 +23,6 @@ const ProductList: React.FC = () => {
       setDeleteConfirm(null);
     } else {
       setDeleteConfirm(productId);
-      // Auto-cancel after 3 seconds
       setTimeout(() => setDeleteConfirm(null), 3000);
     }
   };
@@ -48,107 +47,145 @@ const ProductList: React.FC = () => {
   }
 
   return (
-    <div className="space-y-4">
-      <Window title="Gestión de Productos - Panel de Administración">
-        {/* Toolbar */}
-        <div className="xp-toolbar mb-4">
-          <button
-            onClick={() => setCurrentView('dashboard')}
-            className="xp-button text-sm"
-          >
-            🏠 Inicio
-          </button>
-          <button
-            onClick={() => setShowForm(true)}
-            className="xp-button text-sm"
-          >
-            ➕ Nuevo Producto
-          </button>
-          <div className="text-sm text-gray-600 ml-auto">
-            Total: {products.length} productos
-          </div>
-        </div>
+    <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
+      <Window title="Gestión de Productos - Panel de Administración" width="100%">
+        <div>
+          {/* Toolbar */}
+          <fieldset style={{ border: '1px groove #c0c0c0', padding: '8px', marginBottom: '16px' }}>
+            <legend style={{ fontSize: '10px', color: '#666' }}>Herramientas</legend>
+            <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+              <button
+                onClick={() => setCurrentView('dashboard')}
+                style={{ fontSize: '11px', padding: '4px 8px' }}
+              >
+                🏠 Inicio
+              </button>
+              <button
+                onClick={() => setShowForm(true)}
+                style={{ fontSize: '11px', padding: '4px 8px' }}
+              >
+                ➕ Nuevo Producto
+              </button>
+              <div style={{ marginLeft: 'auto', fontSize: '11px', color: '#666' }}>
+                Total: {products.length} productos
+              </div>
+            </div>
+          </fieldset>
 
-        {products.length === 0 ? (
-          <div className="text-center py-8 bg-gray-50 rounded border-2 border-gray-300">
-            <div className="text-6xl mb-4">📦</div>
-            <h3 className="text-lg font-bold text-gray-600 mb-2">No hay productos registrados</h3>
-            <p className="text-gray-500 mb-4">Comience agregando su primer producto al catálogo</p>
-            <button
-              onClick={() => setShowForm(true)}
-              className="xp-button"
-            >
-              ➕ Crear Primer Producto
-            </button>
-          </div>
-        ) : (
-          <div className="space-y-4">
-            {/* Products Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {products.map((product) => (
-                <div key={product.id} className="bg-white border-2 border-gray-300 rounded p-4">
-                  {/* Product Image */}
-                  <div className="bg-gray-100 rounded border border-gray-300 h-32 mb-3 flex items-center justify-center">
-                    {product.image ? (
-                      <img 
-                        src={product.image} 
-                        alt={product.name}
-                        className="h-full w-full object-cover rounded"
-                        onError={(e) => {
-                          (e.target as HTMLImageElement).src = '';
-                          (e.target as HTMLImageElement).style.display = 'none';
-                          (e.target as HTMLImageElement).nextElementSibling!.textContent = '🖼️';
-                        }}
-                      />
-                    ) : (
-                      <span className="text-4xl text-gray-400">🖼️</span>
-                    )}
-                  </div>
-
-                  {/* Product Info */}
-                  <div className="space-y-2">
-                    <h3 className="font-bold text-lg text-blue-800">{product.name}</h3>
-                    <p className="text-sm text-gray-600 line-clamp-2">{product.description}</p>
-                    
-                    <div className="text-sm space-y-1">
-                      <p><strong>Categoría:</strong> {product.category}</p>
-                      <p><strong>Marca:</strong> {getBrandName(product.brandId)}</p>
-                      <p className="text-lg font-bold text-green-600">
-                        ${product.price.toLocaleString()}
-                      </p>
+          {products.length === 0 ? (
+            <fieldset style={{ border: '2px groove #c0c0c0', padding: '32px', textAlign: 'center' }}>
+              <legend style={{ fontWeight: 'bold' }}>Estado del Catálogo</legend>
+              <div style={{ fontSize: '48px', marginBottom: '16px' }}>📦</div>
+              <h3 style={{ fontSize: '14px', fontWeight: 'bold', color: '#666', margin: '0 0 8px 0' }}>
+                No hay productos registrados
+              </h3>
+              <p style={{ fontSize: '11px', color: '#666', margin: '0 0 16px 0' }}>
+                Comience agregando su primer producto al catálogo
+              </p>
+              <button
+                onClick={() => setShowForm(true)}
+                style={{ fontSize: '11px', padding: '8px 16px' }}
+              >
+                ➕ Crear Primer Producto
+              </button>
+            </fieldset>
+          ) : (
+            <fieldset style={{ border: '2px groove #c0c0c0', padding: '16px' }}>
+              <legend style={{ fontWeight: 'bold' }}>Catálogo de Productos</legend>
+              
+              {/* Products Grid */}
+              <div className="product-grid">
+                {products.map((product) => (
+                  <div key={product.id} className="product-item">
+                    {/* Product Image */}
+                    <div style={{ 
+                      background: '#f0f0f0', 
+                      border: '1px inset #c0c0c0', 
+                      height: '80px', 
+                      marginBottom: '8px', 
+                      display: 'flex', 
+                      alignItems: 'center', 
+                      justifyContent: 'center',
+                      overflow: 'hidden'
+                    }}>
+                      {product.image ? (
+                        <img 
+                          src={product.image} 
+                          alt={product.name}
+                          style={{ height: '100%', width: '100%', objectFit: 'cover' }}
+                          onError={(e) => {
+                            (e.target as HTMLImageElement).src = '';
+                            (e.target as HTMLImageElement).style.display = 'none';
+                            (e.target as HTMLImageElement).nextElementSibling!.textContent = '🖼️';
+                          }}
+                        />
+                      ) : (
+                        <span style={{ fontSize: '32px', color: '#999' }}>🖼️</span>
+                      )}
                     </div>
 
-                    {/* Actions */}
-                    {isAdmin && (
-                      <div className="flex gap-2 pt-2 border-t">
-                        <button
-                          onClick={() => handleEdit(product)}
-                          className="xp-button text-xs flex-1"
-                        >
-                          ✏️ Editar
-                        </button>
-                        <button
-                          onClick={() => handleDelete(product.id)}
-                          className={`xp-button text-xs flex-1 ${
-                            deleteConfirm === product.id 
-                              ? 'bg-red-500 text-white' 
-                              : ''
-                          }`}
-                        >
-                          {deleteConfirm === product.id ? '⚠️ Confirmar' : '🗑️ Eliminar'}
-                        </button>
+                    {/* Product Info */}
+                    <div style={{ fontSize: '11px' }}>
+                      <div style={{ fontWeight: 'bold', color: '#0000aa', marginBottom: '4px' }}>
+                        {product.name}
                       </div>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
+                      <div style={{ fontSize: '10px', color: '#666', marginBottom: '4px' }}>
+                        <strong>Categoría:</strong> {product.category}
+                      </div>
+                      <div style={{ fontSize: '10px', color: '#666', marginBottom: '4px' }}>
+                        <strong>Marca:</strong> {getBrandName(product.brandId)}
+                      </div>
+                      <div style={{ fontSize: '12px', fontWeight: 'bold', color: '#008000', marginBottom: '8px' }}>
+                        ${product.price.toLocaleString()}
+                      </div>
 
-        {/* Status Bar */}
-        <div className="xp-status-bar mt-4">
-          Estado: Sistema operativo | Productos: {products.length} | Última actualización: {new Date().toLocaleString()}
+                      {/* Actions */}
+                      {isAdmin && (
+                        <div style={{ display: 'flex', gap: '4px' }}>
+                          <button
+                            onClick={() => handleEdit(product)}
+                            style={{ 
+                              fontSize: '10px', 
+                              padding: '2px 6px', 
+                              flex: 1,
+                              background: deleteConfirm === product.id ? '#f0f0f0' : undefined
+                            }}
+                            disabled={deleteConfirm === product.id}
+                          >
+                            ✏️ Editar
+                          </button>
+                          <button
+                            onClick={() => handleDelete(product.id)}
+                            style={{ 
+                              fontSize: '10px', 
+                              padding: '2px 6px', 
+                              flex: 1,
+                              background: deleteConfirm === product.id ? '#ff6666' : undefined,
+                              color: deleteConfirm === product.id ? 'white' : undefined
+                            }}
+                          >
+                            {deleteConfirm === product.id ? '⚠️ Confirmar' : '🗑️ Eliminar'}
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </fieldset>
+          )}
+
+          {/* Status Bar */}
+          <div style={{ 
+            background: '#e0e0e0', 
+            border: '1px inset #c0c0c0', 
+            padding: '4px 8px', 
+            fontSize: '10px', 
+            color: '#666',
+            marginTop: '16px'
+          }}>
+            Estado: Sistema operativo | Productos: {products.length} | Última actualización: {new Date().toLocaleString()}
+          </div>
         </div>
       </Window>
     </div>

@@ -7,50 +7,58 @@ interface WindowsDesktopProps {
 
 const WindowsDesktop: React.FC<WindowsDesktopProps> = ({ children }) => {
   const { user, logout } = useAuth();
+  const currentTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="desktop-bg" style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
       {/* Desktop Area */}
-      <div className="flex-1 p-4">
+      <div style={{ flex: 1, padding: '16px', overflow: 'auto' }}>
         {children}
       </div>
       
       {/* Taskbar */}
-      <div className="h-12 bg-gradient-to-r from-blue-600 to-blue-800 border-t-2 border-gray-300 flex items-center px-2 shadow-lg">
+      <div className="taskbar">
         {/* Start Button */}
-        <button className="xp-start-button flex items-center gap-2">
-          <span className="text-lg">🪟</span>
-          <span className="text-sm font-bold">Inicio</span>
+        <button className="start-btn">
+          <span style={{ marginRight: '4px' }}>🪟</span>
+          <span>Inicio</span>
         </button>
         
-        {/* Spacer */}
-        <div className="flex-1"></div>
+        {/* Start Menu Separator */}
+        <div className="taskbar-separator"></div>
         
-        {/* System Tray */}
-        <div className="flex items-center gap-2 text-white text-sm">
+        {/* Quick Launch */}
+        <div className="quick-launch">
+          <button title="Sistema de Ventas">💼</button>
+        </div>
+        
+        {/* Application Area */}
+        <div className="taskbar-labels" style={{ flex: 1 }}>
           {user && (
-            <div className="flex items-center gap-2 bg-blue-700 px-3 py-1 rounded border border-blue-500">
-              <span className="text-xs">👤</span>
-              <span>{user.name}</span>
-              <span className="text-xs">({user.role})</span>
-            </div>
-          )}
-          
-          {/* Clock */}
-          <div className="bg-blue-700 px-3 py-1 rounded border border-blue-500 text-xs">
-            {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-          </div>
-          
-          {/* Logout */}
-          {user && (
-            <button 
-              onClick={logout}
-              className="bg-red-600 hover:bg-red-700 px-2 py-1 rounded text-xs border border-red-500"
-              title="Cerrar sesión"
-            >
-              ✕
+            <button className="taskbar-label" style={{ backgroundColor: '#316ac5', color: 'white' }}>
+              📋 Sistema de Gestión de Ventas
             </button>
           )}
+        </div>
+        
+        {/* System Tray */}
+        <div className="tray">
+          {user && (
+            <>
+              <div className="tray-item" style={{ fontSize: '11px', color: '#000' }}>
+                👤 {user.name} ({user.role === 'admin' ? 'Admin' : 'Cliente'})
+              </div>
+              <button 
+                className="tray-item"
+                onClick={logout}
+                title="Cerrar sesión"
+                style={{ fontSize: '11px', color: 'red', background: 'none', border: 'none', cursor: 'pointer' }}
+              >
+                ✕
+              </button>
+            </>
+          )}
+          <div className="tray-item">{currentTime}</div>
         </div>
       </div>
     </div>

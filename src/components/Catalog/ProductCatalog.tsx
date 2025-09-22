@@ -12,11 +12,9 @@ const ProductCatalog: React.FC = () => {
   const [selectedBrand, setSelectedBrand] = useState('');
   const [sortBy, setSortBy] = useState('name');
 
-  // Get unique categories and brands
   const categories = Array.from(new Set(products.map(p => p.category))).sort();
   const availableBrands = brands.filter(b => products.some(p => p.brandId === b.id));
 
-  // Filter and sort products
   const filteredProducts = useMemo(() => {
     let filtered = products.filter(product => {
       const matchesSearch = product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -27,19 +25,13 @@ const ProductCatalog: React.FC = () => {
       return matchesSearch && matchesCategory && matchesBrand;
     });
 
-    // Sort products
     filtered.sort((a, b) => {
       switch (sortBy) {
-        case 'name':
-          return a.name.localeCompare(b.name);
-        case 'price-low':
-          return a.price - b.price;
-        case 'price-high':
-          return b.price - a.price;
-        case 'category':
-          return a.category.localeCompare(b.category);
-        default:
-          return 0;
+        case 'name': return a.name.localeCompare(b.name);
+        case 'price-low': return a.price - b.price;
+        case 'price-high': return b.price - a.price;
+        case 'category': return a.category.localeCompare(b.category);
+        default: return 0;
       }
     });
 

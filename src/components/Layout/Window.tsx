@@ -13,30 +13,28 @@ const Window: React.FC<WindowProps> = ({
   title, 
   children, 
   onClose, 
-  width = 'w-full max-w-4xl', 
-  height = 'h-auto',
+  width = 'auto', 
+  height = 'auto',
   className = ''
 }) => {
   return (
-    <div className={`xp-window ${width} ${height} ${className} mx-auto`}>
+    <div className={`window window-xp ${className}`} style={{ width, height }}>
       {/* Title Bar */}
-      <div className="xp-titlebar">
-        <div className="flex items-center gap-2">
-          <span className="text-sm">📋</span>
-          <span className="text-sm font-bold">{title}</span>
+      <div className="title-bar">
+        <div className="title-bar-text">
+          {title}
         </div>
-        {onClose && (
-          <button 
-            onClick={onClose}
-            className="bg-red-500 hover:bg-red-600 text-white w-6 h-6 rounded text-xs font-bold border border-red-400"
-          >
-            ×
-          </button>
-        )}
+        <div className="title-bar-controls">
+          <button aria-label="Minimize"></button>
+          <button aria-label="Maximize"></button>
+          {onClose && (
+            <button aria-label="Close" onClick={onClose}></button>
+          )}
+        </div>
       </div>
       
       {/* Window Content */}
-      <div className="p-4 bg-gray-100 rounded-b-lg">
+      <div className="window-body">
         {children}
       </div>
     </div>
