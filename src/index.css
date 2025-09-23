@@ -187,3 +187,167 @@ table.xp-table tr:hover {
   padding: 8px;
   margin: 8px 0;
 }
+
+/* Windows XP Start Menu */
+.start-menu {
+  position: fixed;
+  bottom: 40px;
+  left: 0;
+  width: 400px;
+  height: 450px;
+  background: white;
+  border: 2px outset #c0c0c0;
+  border-radius: 8px 8px 0 0;
+  box-shadow: 4px 4px 8px rgba(0,0,0,0.4);
+  z-index: 1000;
+  font-family: 'Tahoma', sans-serif;
+  font-size: 11px;
+  overflow: hidden;
+}
+
+.start-menu-header {
+  background: linear-gradient(to right, #245edb, #3f7cfa);
+  color: white;
+  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border-bottom: 1px solid #1a4db8;
+}
+
+.start-menu-user-icon {
+  width: 32px;
+  height: 32px;
+  background: rgba(255,255,255,0.2);
+  border-radius: 3px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+}
+
+.start-menu-user-name {
+  font-size: 14px;
+  font-weight: bold;
+  text-shadow: 1px 1px 2px rgba(0,0,0,0.3);
+}
+
+.start-menu-content {
+  display: flex;
+  height: 350px;
+}
+
+.start-menu-left {
+  width: 200px;
+  background: white;
+  border-right: 1px solid #c0c0c0;
+  padding: 8px 0;
+}
+
+.start-menu-right {
+  width: 200px;
+  background: #f0f0f0;
+  padding: 8px 0;
+}
+
+.start-menu-item {
+  display: flex;
+  align-items: center;
+  padding: 6px 12px;
+  cursor: pointer;
+  gap: 12px;
+  border-left: 3px solid transparent;
+}
+
+.start-menu-item:hover {
+  background: linear-gradient(to right, #316ac5, #4a7bc8);
+  color: white;
+  border-left: 3px solid #1a4db8;
+}
+
+.start-menu-icon {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  background: #e8e8e8;
+  border: 1px solid #c0c0c0;
+  border-radius: 2px;
+}
+
+.start-menu-text {
+  flex: 1;
+}
+
+.start-menu-title {
+  font-weight: bold;
+  font-size: 11px;
+  margin-bottom: 1px;
+}
+
+.start-menu-subtitle {
+  font-size: 10px;
+  color: #666;
+}
+
+.start-menu-item:hover .start-menu-subtitle {
+  color: #ddd;
+}
+
+.start-menu-system-item {
+  display: flex;
+  align-items: center;
+  padding: 4px 16px;
+  cursor: pointer;
+  gap: 8px;
+  font-size: 11px;
+}
+
+.start-menu-system-item:hover {
+  background: #316ac5;
+  color: white;
+}
+
+.start-menu-system-icon {
+  width: 16px;
+  height: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+}
+
+.start-menu-separator {
+  height: 1px;
+  background: #c0c0c0;
+  margin: 4px 8px;
+}
+
+.start-menu-footer {
+  background: #e0e0e0;
+  border-top: 1px solid #c0c0c0;
+  padding: 4px 8px;
+  display: flex;
+  justify-content: space-between;
+  height: 32px;
+}
+
+.start-menu-footer-btn {
+  background: none;
+  border: none;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  cursor: pointer;
+  font-size: 10px;
+  border-radius: 2px;
+  color: #333;
+}
+
+.start-menu-footer-btn:hover {
+  background: #316ac5;
+  color: white;
+}

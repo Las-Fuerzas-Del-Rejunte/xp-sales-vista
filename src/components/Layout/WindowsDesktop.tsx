@@ -11,6 +11,7 @@ const WindowsDesktop: React.FC<WindowsDesktopProps> = ({ children }) => {
   const { user, logout } = useAuth();
   const { setCurrentView } = useApp();
   const [showDesktop, setShowDesktop] = useState(true);
+  const [showStartMenu, setShowStartMenu] = useState(false);
   const currentTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
   const handleIconClick = (view: string) => {
@@ -20,6 +21,16 @@ const WindowsDesktop: React.FC<WindowsDesktopProps> = ({ children }) => {
 
   const handleTaskbarClick = () => {
     setShowDesktop(!showDesktop);
+  };
+
+  const handleStartClick = () => {
+    setShowStartMenu(!showStartMenu);
+  };
+
+  const handleStartMenuClick = (view: string) => {
+    setCurrentView(view);
+    setShowDesktop(false);
+    setShowStartMenu(false);
   };
 
   return (
@@ -77,12 +88,130 @@ const WindowsDesktop: React.FC<WindowsDesktopProps> = ({ children }) => {
         )}
       </div>
       
+      {/* Start Menu */}
+      {showStartMenu && (
+        <div className="start-menu">
+          {/* User Header */}
+          <div className="start-menu-header">
+            <div className="start-menu-user-icon">👤</div>
+            <div className="start-menu-user-name">{user?.name || 'Usuario'}</div>
+          </div>
+          
+          {/* Menu Content */}
+          <div className="start-menu-content">
+            {/* Left Column - Applications */}
+            <div className="start-menu-left">
+              <div className="start-menu-item" onClick={() => handleStartMenuClick('dashboard')}>
+                <div className="start-menu-icon">🏠</div>
+                <div className="start-menu-text">
+                  <div className="start-menu-title">Panel Principal</div>
+                  <div className="start-menu-subtitle">Dashboard del sistema</div>
+                </div>
+              </div>
+              
+              <div className="start-menu-item" onClick={() => handleStartMenuClick('catalog')}>
+                <div className="start-menu-icon">🛒</div>
+                <div className="start-menu-text">
+                  <div className="start-menu-title">Catálogo de Productos</div>
+                  <div className="start-menu-subtitle">Explorar productos</div>
+                </div>
+              </div>
+              
+              <div className="start-menu-item" onClick={() => handleStartMenuClick('profile')}>
+                <div className="start-menu-icon">👤</div>
+                <div className="start-menu-text">
+                  <div className="start-menu-title">Mi Perfil</div>
+                  <div className="start-menu-subtitle">Configuración de usuario</div>
+                </div>
+              </div>
+              
+              {user?.role === 'admin' && (
+                <>
+                  <div className="start-menu-item" onClick={() => handleStartMenuClick('products')}>
+                    <div className="start-menu-icon">📦</div>
+                    <div className="start-menu-text">
+                      <div className="start-menu-title">Gestión de Productos</div>
+                      <div className="start-menu-subtitle">Administrar productos</div>
+                    </div>
+                  </div>
+                  
+                  <div className="start-menu-item" onClick={() => handleStartMenuClick('brands')}>
+                    <div className="start-menu-icon">🏢</div>
+                    <div className="start-menu-text">
+                      <div className="start-menu-title">Gestión de Marcas</div>
+                      <div className="start-menu-subtitle">Administrar marcas</div>
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
+            
+            {/* Right Column - System Items */}
+            <div className="start-menu-right">
+              <div className="start-menu-system-item" onClick={() => handleStartMenuClick('profile')}>
+                <div className="start-menu-system-icon">📁</div>
+                <span>Mi Perfil</span>
+              </div>
+              
+              <div className="start-menu-system-item" onClick={() => handleStartMenuClick('catalog')}>
+                <div className="start-menu-system-icon">📄</div>
+                <span>Mis Documentos</span>
+              </div>
+              
+              <div className="start-menu-system-item">
+                <div className="start-menu-system-icon">🖼️</div>
+                <span>Mis Imágenes</span>
+              </div>
+              
+              <div className="start-menu-system-item">
+                <div className="start-menu-system-icon">🎵</div>
+                <span>Mi Música</span>
+              </div>
+              
+              <div className="start-menu-system-item">
+                <div className="start-menu-system-icon">💻</div>
+                <span>Mi PC</span>
+              </div>
+              
+              <div className="start-menu-separator"></div>
+              
+              <div className="start-menu-system-item">
+                <div className="start-menu-system-icon">⚙️</div>
+                <span>Panel de Control</span>
+              </div>
+              
+              <div className="start-menu-system-item">
+                <div className="start-menu-system-icon">🔍</div>
+                <span>Buscar</span>
+              </div>
+              
+              <div className="start-menu-system-item">
+                <div className="start-menu-system-icon">❓</div>
+                <span>Ayuda y Soporte</span>
+              </div>
+            </div>
+          </div>
+          
+          {/* Footer */}
+          <div className="start-menu-footer">
+            <button className="start-menu-footer-btn" onClick={logout}>
+              <span>🚪</span>
+              <span>Cerrar sesión</span>
+            </button>
+            <button className="start-menu-footer-btn">
+              <span>🔌</span>
+              <span>Apagar equipo</span>
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Taskbar */}
       <div className="taskbar">
         {/* Start Button */}
-        <button className="start-btn">
+        <button className="start-btn" onClick={handleStartClick}>
           <span style={{ marginRight: '4px' }}>🪟</span>
-          <span>Inicio</span>
+          <span>inicio</span>
         </button>
         
         {/* Start Menu Separator */}
@@ -90,7 +219,7 @@ const WindowsDesktop: React.FC<WindowsDesktopProps> = ({ children }) => {
         
         {/* Quick Launch */}
         <div className="quick-launch">
-          <button title="Sistema de Ventas">💼</button>
+          <button title="Sistema de Ventas" onClick={() => handleStartMenuClick('dashboard')}>💼</button>
         </div>
         
         {/* Application Area */}
