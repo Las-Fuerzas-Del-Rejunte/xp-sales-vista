@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 
 interface WindowProps {
   title: string;
@@ -17,16 +17,37 @@ const Window: React.FC<WindowProps> = ({
   height = 'auto',
   className = ''
 }) => {
+  const [isMinimized, setIsMinimized] = useState(false);
+  const [isMaximized, setIsMaximized] = useState(false);
+
+  const handleMinimize = () => {
+    setIsMinimized(!isMinimized);
+  };
+
+  const handleMaximize = () => {
+    setIsMaximized(!isMaximized);
+  };
+
+  const windowStyle = {
+    width: isMaximized ? '100vw' : width,
+    height: isMaximized ? '100vh' : height,
+    position: isMaximized ? 'fixed' as const : 'relative' as const,
+    top: isMaximized ? 0 : 'auto',
+    left: isMaximized ? 0 : 'auto',
+    zIndex: isMaximized ? 1000 : 'auto',
+    display: isMinimized ? 'none' : 'block'
+  };
+
   return (
-    <div className={`window window-xp ${className}`} style={{ width, height }}>
+    <div className={`window window-xp ${className}`} style={windowStyle}>
       {/* Title Bar */}
       <div className="title-bar">
         <div className="title-bar-text">
           {title}
         </div>
         <div className="title-bar-controls">
-          <button aria-label="Minimize"></button>
-          <button aria-label="Maximize"></button>
+          <button aria-label="Minimize" onClick={handleMinimize}></button>
+          <button aria-label="Maximize" onClick={handleMaximize}></button>
           {onClose && (
             <button aria-label="Close" onClick={onClose}></button>
           )}
@@ -34,7 +55,10 @@ const Window: React.FC<WindowProps> = ({
       </div>
       
       {/* Window Content */}
-      <div className="window-body">
+      <div className="window-body" style={{ 
+        height: isMaximized ? 'calc(100vh - 32px)' : 'auto',
+        overflow: 'auto'
+      }}>
         {children}
       </div>
     </div>

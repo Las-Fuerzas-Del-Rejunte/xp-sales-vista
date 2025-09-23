@@ -1,5 +1,7 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
+import { useApp } from '../../contexts/AppContext';
+import DesktopIcon from './DesktopIcon';
 
 interface WindowsDesktopProps {
   children: React.ReactNode;
@@ -7,13 +9,72 @@ interface WindowsDesktopProps {
 
 const WindowsDesktop: React.FC<WindowsDesktopProps> = ({ children }) => {
   const { user, logout } = useAuth();
+  const { setCurrentView } = useApp();
+  const [showDesktop, setShowDesktop] = useState(true);
   const currentTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+  const handleIconClick = (view: string) => {
+    setCurrentView(view);
+    setShowDesktop(false);
+  };
+
+  const handleTaskbarClick = () => {
+    setShowDesktop(!showDesktop);
+  };
 
   return (
     <div className="desktop-bg" style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
       {/* Desktop Area */}
-      <div style={{ flex: 1, padding: '16px', overflow: 'auto' }}>
-        {children}
+      <div style={{ flex: 1, padding: '16px', overflow: 'auto', position: 'relative' }}>
+        {/* Desktop Icons */}
+        {showDesktop && (
+          <div style={{
+            position: 'absolute',
+            top: '16px',
+            left: '16px',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '8px',
+            zIndex: 1
+          }}>
+            <DesktopIcon
+              icon="🏠"
+              label="Panel Principal"
+              onClick={() => handleIconClick('dashboard')}
+            />
+            {user?.role === 'admin' && (
+              <>
+                <DesktopIcon
+                  icon="📦"
+                  label="Gestión de Productos"
+                  onClick={() => handleIconClick('products')}
+                />
+                <DesktopIcon
+                  icon="🏢"
+                  label="Gestión de Marcas"
+                  onClick={() => handleIconClick('brands')}
+                />
+              </>
+            )}
+            <DesktopIcon
+              icon="🛒"
+              label="Catálogo de Productos"
+              onClick={() => handleIconClick('catalog')}
+            />
+            <DesktopIcon
+              icon="👤"
+              label="Mi Perfil"
+              onClick={() => handleIconClick('profile')}
+            />
+          </div>
+        )}
+        
+        {/* Window Content */}
+        {!showDesktop && (
+          <div style={{ position: 'relative', zIndex: 2 }}>
+            {children}
+          </div>
+        )}
       </div>
       
       {/* Taskbar */}
@@ -34,9 +95,22 @@ const WindowsDesktop: React.FC<WindowsDesktopProps> = ({ children }) => {
         
         {/* Application Area */}
         <div className="taskbar-labels" style={{ flex: 1 }}>
-          {user && (
-            <button className="taskbar-label" style={{ backgroundColor: '#316ac5', color: 'white' }}>
+          {user && !showDesktop && (
+            <button 
+              className="taskbar-label" 
+              style={{ backgroundColor: '#316ac5', color: 'white' }}
+              onClick={handleTaskbarClick}
+            >
               📋 Sistema de Gestión de Ventas
+            </button>
+          )}
+          {showDesktop && (
+            <button 
+              className="taskbar-label" 
+              style={{ backgroundColor: '#c0c0c0', color: 'black' }}
+              onClick={handleTaskbarClick}
+            >
+              🖥️ Escritorio
             </button>
           )}
         </div>

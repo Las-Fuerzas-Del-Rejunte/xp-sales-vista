@@ -67,31 +67,31 @@ const ProductCatalog: React.FC = () => {
         </div>
 
         {/* Search and Filters */}
-        <div className="bg-gray-50 p-4 rounded border-2 border-gray-300 mb-4">
-          <h3 className="font-bold text-gray-800 mb-3 flex items-center gap-2">
-            🔍 Buscar y Filtrar Productos
-          </h3>
+        <fieldset style={{ border: '2px groove #c0c0c0', padding: '8px', marginBottom: '16px' }}>
+          <legend style={{ fontWeight: 'bold', fontSize: '11px' }}>🔍 Buscar y Filtrar Productos</legend>
           
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-3">
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '8px', marginBottom: '8px' }}>
             {/* Search */}
             <div>
-              <label className="block text-xs font-bold mb-1">Buscar:</label>
+              <label style={{ display: 'block', fontSize: '10px', fontWeight: 'bold', marginBottom: '2px' }}>Buscar:</label>
               <input
                 type="text"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="xp-input w-full text-sm"
+                className="xp-input"
+                style={{ width: '100%' }}
                 placeholder="Nombre o descripción..."
               />
             </div>
 
             {/* Category Filter */}
             <div>
-              <label className="block text-xs font-bold mb-1">Categoría:</label>
+              <label style={{ display: 'block', fontSize: '10px', fontWeight: 'bold', marginBottom: '2px' }}>Categoría:</label>
               <select
                 value={selectedCategory}
                 onChange={(e) => setSelectedCategory(e.target.value)}
-                className="xp-input w-full text-sm"
+                className="xp-input"
+                style={{ width: '100%' }}
               >
                 <option value="">Todas las categorías</option>
                 {categories.map(category => (
@@ -102,11 +102,12 @@ const ProductCatalog: React.FC = () => {
 
             {/* Brand Filter */}
             <div>
-              <label className="block text-xs font-bold mb-1">Marca:</label>
+              <label style={{ display: 'block', fontSize: '10px', fontWeight: 'bold', marginBottom: '2px' }}>Marca:</label>
               <select
                 value={selectedBrand}
                 onChange={(e) => setSelectedBrand(e.target.value)}
-                className="xp-input w-full text-sm"
+                className="xp-input"
+                style={{ width: '100%' }}
               >
                 <option value="">Todas las marcas</option>
                 {availableBrands.map(brand => (
@@ -117,11 +118,12 @@ const ProductCatalog: React.FC = () => {
 
             {/* Sort */}
             <div>
-              <label className="block text-xs font-bold mb-1">Ordenar por:</label>
+              <label style={{ display: 'block', fontSize: '10px', fontWeight: 'bold', marginBottom: '2px' }}>Ordenar por:</label>
               <select
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value)}
-                className="xp-input w-full text-sm"
+                className="xp-input"
+                style={{ width: '100%' }}
               >
                 <option value="name">Nombre (A-Z)</option>
                 <option value="price-low">Precio (Menor a Mayor)</option>
@@ -134,11 +136,11 @@ const ProductCatalog: React.FC = () => {
           {/* Clear Filters */}
           <button
             onClick={clearFilters}
-            className="xp-button text-xs"
+            className="xp-button"
           >
             🗑️ Limpiar Filtros
           </button>
-        </div>
+        </fieldset>
 
         {/* Products Grid */}
         {filteredProducts.length === 0 ? (

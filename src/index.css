@@ -118,6 +118,59 @@ table.xp-table tr:hover {
   background: #1a4480;
 }
 
+/* XP Input styling */
+.xp-input {
+  border: 1px inset #c0c0c0;
+  padding: 2px 4px;
+  font-family: 'Tahoma', sans-serif;
+  font-size: 11px;
+  background: white;
+}
+
+.xp-input:focus {
+  outline: none;
+  border: 1px inset #0066cc;
+}
+
+/* XP Button styling */
+.xp-button {
+  border: 1px outset #c0c0c0;
+  background: linear-gradient(to bottom, #f1f1f1, #d4d4d4);
+  padding: 2px 8px;
+  font-family: 'Tahoma', sans-serif;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.xp-button:hover {
+  background: linear-gradient(to bottom, #e8e8e8, #c8c8c8);
+}
+
+.xp-button:active {
+  border: 1px inset #c0c0c0;
+  background: linear-gradient(to bottom, #d4d4d4, #f1f1f1);
+}
+
+/* XP Toolbar styling */
+.xp-toolbar {
+  background: linear-gradient(to bottom, #f1f1f1, #e8e8e8);
+  border: 1px solid #c0c0c0;
+  padding: 4px 8px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* XP Status bar styling */
+.xp-status-bar {
+  background: #e0e0e0;
+  border: 1px inset #c0c0c0;
+  padding: 2px 8px;
+  font-size: 10px;
+  color: #666;
+  border-top: 1px groove #c0c0c0;
+}
+
 /* Error and success messages */
 .error-box {
   background: #ffe6e6;
