@@ -1,14 +1,14 @@
 import React from 'react';
-import { useAuth } from '../../contexts/AuthContext';
-import { useApp } from '../../contexts/AppContext';
+import { useAuth } from '../../contexts/SupabaseAuthContext';
+import { useApp } from '../../contexts/SupabaseAppContext';
 import Window from '../Layout/Window';
 
 const Dashboard: React.FC = () => {
-  const { user } = useAuth();
+  const { profile } = useAuth();
   const { products, brands, setCurrentView } = useApp();
 
   const menuItems = [
-    ...(user?.role === 'admin' ? [
+    ...(profile?.role === 'admin' ? [
       { id: 'products', label: 'Gestión de Productos', icon: '📦', description: 'Administrar catálogo de productos' },
       { id: 'brands', label: 'Gestión de Marcas', icon: '🏢', description: 'Administrar marcas y fabricantes' },
     ] : []),
@@ -18,7 +18,7 @@ const Dashboard: React.FC = () => {
 
   return (
     <div style={{ maxWidth: '800px', margin: '0 auto' }}>
-      <Window title={`Panel Principal - Bienvenido ${user?.name}`} width="100%">
+      <Window title={`Panel Principal - Bienvenido ${profile?.name}`} width="100%">
         <div>
           {/* Welcome Message */}
           <fieldset style={{ border: '2px groove #c0c0c0', padding: '16px', marginBottom: '16px' }}>
@@ -56,7 +56,7 @@ const Dashboard: React.FC = () => {
                 <div style={{ fontSize: '24px' }}>👤</div>
                 <div style={{ fontSize: '11px', fontWeight: 'bold' }}>Rol Actual</div>
                 <div style={{ fontSize: '14px', fontWeight: 'bold', color: '#0000aa' }}>
-                  {user?.role === 'admin' ? 'Admin' : 'Cliente'}
+                  {profile?.role === 'admin' ? 'Admin' : 'Cliente'}
                 </div>
               </div>
             </div>
@@ -100,13 +100,13 @@ const Dashboard: React.FC = () => {
           {/* System Info */}
           <fieldset style={{ border: '1px groove #c0c0c0', padding: '12px' }}>
             <legend style={{ fontSize: '10px', color: '#666' }}>ℹ️ Información del Sistema</legend>
-            <div style={{ fontSize: '10px', color: '#666' }}>
+              <div style={{ fontSize: '10px', color: '#666' }}>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '8px' }}>
                 <div>
-                  <strong>Usuario:</strong> {user?.name} ({user?.email})
+                  <strong>Usuario:</strong> {profile?.name} ({profile?.email})
                 </div>
                 <div>
-                  <strong>Rol:</strong> {user?.role === 'admin' ? 'Administrador' : 'Cliente'}
+                  <strong>Rol:</strong> {profile?.role === 'admin' ? 'Administrador' : 'Cliente'}
                 </div>
                 <div>
                   <strong>Versión:</strong> 1.0.0 - MVP

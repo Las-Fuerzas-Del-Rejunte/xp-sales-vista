@@ -1,8 +1,8 @@
 import React from 'react';
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
-import { AuthProvider } from './contexts/AuthContext';
-import { AppProvider } from './contexts/AppContext';
+import { AuthProvider } from './contexts/SupabaseAuthContext';
+import { AppProvider } from './contexts/SupabaseAppContext';
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 

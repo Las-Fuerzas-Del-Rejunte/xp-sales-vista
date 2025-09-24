@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { useAuth } from '../../contexts/AuthContext';
-import { useApp } from '../../contexts/AppContext';
+import { useAuth } from '../../contexts/SupabaseAuthContext';
+import { useApp } from '../../contexts/SupabaseAppContext';
 import DesktopIcon from './DesktopIcon';
 
 interface WindowsDesktopProps {
@@ -8,7 +8,7 @@ interface WindowsDesktopProps {
 }
 
 const WindowsDesktop: React.FC<WindowsDesktopProps> = ({ children }) => {
-  const { user, logout } = useAuth();
+  const { profile, signOut } = useAuth();
   const { setCurrentView } = useApp();
   const [showDesktop, setShowDesktop] = useState(true);
   const [showStartMenu, setShowStartMenu] = useState(false);
@@ -53,7 +53,7 @@ const WindowsDesktop: React.FC<WindowsDesktopProps> = ({ children }) => {
               label="Panel Principal"
               onClick={() => handleIconClick('dashboard')}
             />
-            {user?.role === 'admin' && (
+            {profile?.role === 'admin' && (
               <>
                 <DesktopIcon
                   icon="📦"
@@ -94,7 +94,7 @@ const WindowsDesktop: React.FC<WindowsDesktopProps> = ({ children }) => {
           {/* User Header */}
           <div className="start-menu-header">
             <div className="start-menu-user-icon">👤</div>
-            <div className="start-menu-user-name">{user?.name || 'Usuario'}</div>
+            <div className="start-menu-user-name">{profile?.name || 'Usuario'}</div>
           </div>
           
           {/* Menu Content */}
@@ -125,7 +125,7 @@ const WindowsDesktop: React.FC<WindowsDesktopProps> = ({ children }) => {
                 </div>
               </div>
               
-              {user?.role === 'admin' && (
+              {profile?.role === 'admin' && (
                 <>
                   <div className="start-menu-item" onClick={() => handleStartMenuClick('products')}>
                     <div className="start-menu-icon">📦</div>
@@ -194,7 +194,7 @@ const WindowsDesktop: React.FC<WindowsDesktopProps> = ({ children }) => {
           
           {/* Footer */}
           <div className="start-menu-footer">
-            <button className="start-menu-footer-btn" onClick={logout}>
+            <button className="start-menu-footer-btn" onClick={signOut}>
               <span>🚪</span>
               <span>Cerrar sesión</span>
             </button>
@@ -224,7 +224,7 @@ const WindowsDesktop: React.FC<WindowsDesktopProps> = ({ children }) => {
         
         {/* Application Area */}
         <div className="taskbar-labels" style={{ flex: 1 }}>
-          {user && !showDesktop && (
+          {profile && !showDesktop && (
             <button 
               className="taskbar-label" 
               style={{ backgroundColor: '#316ac5', color: 'white' }}
@@ -246,14 +246,14 @@ const WindowsDesktop: React.FC<WindowsDesktopProps> = ({ children }) => {
         
         {/* System Tray */}
         <div className="tray">
-          {user && (
+          {profile && (
             <>
               <div className="tray-item" style={{ fontSize: '11px', color: '#000' }}>
-                👤 {user.name} ({user.role === 'admin' ? 'Admin' : 'Cliente'})
+                👤 {profile.name} ({profile.role === 'admin' ? 'Admin' : 'Cliente'})
               </div>
               <button 
                 className="tray-item"
-                onClick={logout}
+                onClick={signOut}
                 title="Cerrar sesión"
                 style={{ fontSize: '11px', color: 'red', background: 'none', border: 'none', cursor: 'pointer' }}
               >

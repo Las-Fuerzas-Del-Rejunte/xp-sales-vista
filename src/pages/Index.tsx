@@ -1,9 +1,8 @@
-import React, { useState } from 'react';
-import { useAuth } from '../contexts/AuthContext';
-import { useApp } from '../contexts/AppContext';
+import React from 'react';
+import { useAuth } from '../contexts/SupabaseAuthContext';
+import { useApp } from '../contexts/SupabaseAppContext';
 import WindowsDesktop from '../components/Layout/WindowsDesktop';
-import LoginForm from '../components/Auth/LoginForm';
-import RegisterForm from '../components/Auth/RegisterForm';
+import AuthPage from '../components/Auth/AuthPage';
 import Dashboard from '../components/Dashboard/Dashboard';
 import ProductList from '../components/Products/ProductList';
 import BrandList from '../components/Brands/BrandList';
@@ -11,17 +10,17 @@ import ProductCatalog from '../components/Catalog/ProductCatalog';
 import UserProfile from '../components/Profile/UserProfile';
 
 const Index = () => {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, loading } = useAuth();
   const { currentView } = useApp();
-  const [authView, setAuthView] = useState<'login' | 'register'>('login');
+
+  // Show loading while checking authentication
+  if (loading) {
+    return <AuthPage />;
+  }
 
   // Authentication Flow
   if (!isAuthenticated) {
-    return authView === 'login' ? (
-      <LoginForm onSwitchToRegister={() => setAuthView('register')} />
-    ) : (
-      <RegisterForm onSwitchToLogin={() => setAuthView('login')} />
-    );
+    return <AuthPage />;
   }
 
   // Main Application
