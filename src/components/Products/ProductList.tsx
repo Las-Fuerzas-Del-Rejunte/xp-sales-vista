@@ -1,13 +1,13 @@
 import React, { useState } from 'react';
-import { useApp } from '../../contexts/AppContext';
-import { useAuth } from '../../contexts/AuthContext';
+import { useApp } from '../../contexts/SupabaseAppContext';
+import { useAuth } from '../../contexts/SupabaseAuthContext';
 import Window from '../Layout/Window';
 import ProductForm from './ProductForm';
-import { Product } from '../../contexts/AppContext';
+import { Product } from '../../contexts/SupabaseAppContext';
 
 const ProductList: React.FC = () => {
   const { products, brands, deleteProduct, setCurrentView } = useApp();
-  const { isAdmin } = useAuth();
+  const { profile } = useAuth();
   const [showForm, setShowForm] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
@@ -133,14 +133,14 @@ const ProductList: React.FC = () => {
                         <strong>Categoría:</strong> {product.category}
                       </div>
                       <div style={{ fontSize: '10px', color: '#666', marginBottom: '4px' }}>
-                        <strong>Marca:</strong> {getBrandName(product.brandId)}
+                        <strong>Marca:</strong> {getBrandName(product.brand_id)}
                       </div>
                       <div style={{ fontSize: '12px', fontWeight: 'bold', color: '#008000', marginBottom: '8px' }}>
                         ${product.price.toLocaleString()}
                       </div>
 
                       {/* Actions */}
-                      {isAdmin && (
+                      {profile?.role === 'admin' && (
                         <div style={{ display: 'flex', gap: '4px' }}>
                           <button
                             onClick={() => handleEdit(product)}

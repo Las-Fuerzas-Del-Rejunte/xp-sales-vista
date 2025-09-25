@@ -1,6 +1,6 @@
 import React from 'react';
 import Window from '../Layout/Window';
-import { Product } from '../../contexts/AppContext';
+import { Product } from '../../contexts/SupabaseAppContext';
 
 interface ProductDetailModalProps {
   product: Product;
@@ -79,7 +79,7 @@ const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                 <div className="bg-gray-50 p-3 rounded border border-gray-300">
                   <p className="text-sm font-bold text-gray-700 mb-1">📅 Fecha de creación:</p>
                   <p className="text-gray-600">
-                    {new Date(product.createdAt).toLocaleDateString('es-ES', {
+                    {new Date(product.created_at).toLocaleDateString('es-ES', {
                       year: 'numeric',
                       month: 'long',
                       day: 'numeric'

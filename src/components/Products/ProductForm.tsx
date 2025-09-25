@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { useApp } from '../../contexts/AppContext';
+import { useApp } from '../../contexts/SupabaseAppContext';
 import Window from '../Layout/Window';
-import { Product } from '../../contexts/AppContext';
+import { Product } from '../../contexts/SupabaseAppContext';
 
 interface ProductFormProps {
   product?: Product | null;
@@ -29,7 +29,7 @@ const ProductForm: React.FC<ProductFormProps> = ({ product, onClose }) => {
         category: product.category,
         price: product.price.toString(),
         image: product.image,
-        brandId: product.brandId
+        brandId: product.brand_id
       });
     }
   }, [product]);
@@ -75,7 +75,7 @@ const ProductForm: React.FC<ProductFormProps> = ({ product, onClose }) => {
         category: formData.category.trim(),
         price: parseFloat(formData.price),
         image: formData.image.trim(),
-        brandId: formData.brandId
+        brand_id: formData.brandId
       };
 
       if (product) {

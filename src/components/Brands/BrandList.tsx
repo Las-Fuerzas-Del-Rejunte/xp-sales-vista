@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
-import { useApp } from '../../contexts/AppContext';
+import { useApp } from '../../contexts/SupabaseAppContext';
 import Window from '../Layout/Window';
 import BrandForm from './BrandForm';
-import { Brand } from '../../contexts/AppContext';
+import { Brand } from '../../contexts/SupabaseAppContext';
 
 const BrandList: React.FC = () => {
   const { brands, products, deleteBrand, setCurrentView } = useApp();
@@ -36,7 +36,7 @@ const BrandList: React.FC = () => {
   };
 
   const getProductCount = (brandId: string) => {
-    return products.filter(p => p.brandId === brandId).length;
+    return products.filter(p => p.brand_id === brandId).length;
   };
 
   const closeForm = () => {
@@ -146,7 +146,7 @@ const BrandList: React.FC = () => {
                         </span>
                       </td>
                       <td className="text-xs text-gray-500">
-                        {new Date(brand.createdAt).toLocaleDateString()}
+                        {new Date(brand.created_at).toLocaleDateString()}
                       </td>
                       <td>
                         <div className="flex gap-1">

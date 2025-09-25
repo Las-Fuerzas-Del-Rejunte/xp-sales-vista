@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { useApp } from '../../contexts/AppContext';
+import { useApp } from '../../contexts/SupabaseAppContext';
 import Window from '../Layout/Window';
-import { Brand } from '../../contexts/AppContext';
+import { Brand } from '../../contexts/SupabaseAppContext';
 
 interface BrandFormProps {
   brand?: Brand | null;

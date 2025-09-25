@@ -1,14 +1,14 @@
 import React, { useState } from 'react';
-import { useAuth } from '../../contexts/AuthContext';
-import { useApp } from '../../contexts/AppContext';
+import { useAuth } from '../../contexts/SupabaseAuthContext';
+import { useApp } from '../../contexts/SupabaseAppContext';
 import Window from '../Layout/Window';
 
 const UserProfile: React.FC = () => {
-  const { user, updateProfile } = useAuth();
+  const { user, profile, updateProfile } = useAuth();
   const { setCurrentView } = useApp();
   const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState({
-    name: user?.name || '',
+    name: profile?.name || '',
     email: user?.email || ''
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -71,7 +71,7 @@ const UserProfile: React.FC = () => {
 
   const handleCancel = () => {
     setFormData({
-      name: user?.name || '',
+      name: profile?.name || '',
       email: user?.email || ''
     });
     setErrors({});
@@ -90,7 +90,7 @@ const UserProfile: React.FC = () => {
             🏠 Inicio
           </button>
           <div className="text-sm text-gray-600 ml-auto">
-            Usuario: {user?.role === 'admin' ? 'Administrador' : 'Cliente'}
+            Usuario: {profile?.role === 'admin' ? 'Administrador' : 'Cliente'}
           </div>
         </div>
 
@@ -168,7 +168,7 @@ const UserProfile: React.FC = () => {
               <div className="space-y-4">
                 <div className="bg-gray-50 p-4 rounded border border-gray-300">
                   <p className="text-sm font-bold text-gray-700 mb-1">Nombre:</p>
-                  <p className="text-gray-800">{user?.name}</p>
+                  <p className="text-gray-800">{profile?.name}</p>
                 </div>
 
                 <div className="bg-gray-50 p-4 rounded border border-gray-300">
@@ -179,7 +179,7 @@ const UserProfile: React.FC = () => {
                 <div className="bg-gray-50 p-4 rounded border border-gray-300">
                   <p className="text-sm font-bold text-gray-700 mb-1">Rol:</p>
                   <p className="text-gray-800">
-                    {user?.role === 'admin' ? '👨‍💼 Administrador' : '👤 Cliente'}
+                    {profile?.role === 'admin' ? '👨‍💼 Administrador' : '👤 Cliente'}
                   </p>
                 </div>
 
@@ -208,7 +208,7 @@ const UserProfile: React.FC = () => {
                 </div>
               </div>
 
-              {user?.role === 'admin' && (
+              {profile?.role === 'admin' && (
                 <div className="bg-purple-50 p-4 rounded border-2 border-purple-200">
                   <h4 className="font-bold text-purple-800 mb-2">👨‍💼 Privilegios de Administrador</h4>
                   <div className="text-sm text-purple-700 space-y-1">
@@ -260,7 +260,7 @@ const UserProfile: React.FC = () => {
 
         {/* Status Bar */}
         <div className="xp-status-bar mt-4">
-          Estado: Perfil cargado | Usuario: {user?.name} | Última actualización: {new Date().toLocaleString()}
+          Estado: Perfil cargado | Usuario: {profile?.name} | Última actualización: {new Date().toLocaleString()}
         </div>
       </Window>
     </div>

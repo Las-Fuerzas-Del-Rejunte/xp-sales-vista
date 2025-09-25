@@ -1,8 +1,8 @@
 import React, { useState, useMemo } from 'react';
-import { useApp } from '../../contexts/AppContext';
+import { useApp } from '../../contexts/SupabaseAppContext';
 import Window from '../Layout/Window';
 import ProductDetailModal from './ProductDetailModal';
-import { Product } from '../../contexts/AppContext';
+import { Product } from '../../contexts/SupabaseAppContext';
 
 const ProductCatalog: React.FC = () => {
   const { products, brands, setCurrentView } = useApp();
@@ -13,14 +13,14 @@ const ProductCatalog: React.FC = () => {
   const [sortBy, setSortBy] = useState('name');
 
   const categories = Array.from(new Set(products.map(p => p.category))).sort();
-  const availableBrands = brands.filter(b => products.some(p => p.brandId === b.id));
+  const availableBrands = brands.filter(b => products.some(p => p.brand_id === b.id));
 
   const filteredProducts = useMemo(() => {
     let filtered = products.filter(product => {
       const matchesSearch = product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                            product.description.toLowerCase().includes(searchTerm.toLowerCase());
       const matchesCategory = !selectedCategory || product.category === selectedCategory;
-      const matchesBrand = !selectedBrand || product.brandId === selectedBrand;
+      const matchesBrand = !selectedBrand || product.brand_id === selectedBrand;
       
       return matchesSearch && matchesCategory && matchesBrand;
     });
@@ -193,7 +193,7 @@ const ProductCatalog: React.FC = () => {
                       <strong>Categoría:</strong> {product.category}
                     </p>
                     <p className="text-gray-600">
-                      <strong>Marca:</strong> {getBrandName(product.brandId)}
+                      <strong>Marca:</strong> {getBrandName(product.brand_id)}
                     </p>
                   </div>
 
@@ -231,7 +231,7 @@ const ProductCatalog: React.FC = () => {
         <ProductDetailModal
           product={selectedProduct}
           onClose={() => setSelectedProduct(null)}
-          brandName={getBrandName(selectedProduct.brandId)}
+          brandName={getBrandName(selectedProduct.brand_id)}
         />
       )}
     </div>
