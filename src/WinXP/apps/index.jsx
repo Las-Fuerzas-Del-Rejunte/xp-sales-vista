@@ -18,8 +18,8 @@ import winamp from 'assets/windowsIcons/winamp.png';
 import paintLarge from 'assets/windowsIcons/680(32x32).png';
 import paint from 'assets/windowsIcons/680(16x16).png';
 import userIcon from 'assets/windowsIcons/214(16x16).png';
-import shopIcon from 'assets/windowsIcons/392(16x16).png';
-import adminIcon from 'assets/windowsIcons/227(16x16).png';
+import shopIcon from 'assets/windowsIcons/74(32x32).png';
+import adminIcon from 'assets/windowsIcons/67(32x32).png';
 
 const gen = () => {
   let id = -1;
