@@ -169,7 +169,8 @@ export function AppStateProvider({ children }) {
 
   const api = useMemo(() => ({ supabase, state, dispatch, ACTIONS }), [supabase, state]);
 
-  return <AppStateContext.Provider value={api}>{children}</AppStateContext.Provider>;
+  const Provider = AppStateContext.Provider;
+  return <Provider value={api}>{children}</Provider>;
 }
 
 export function useAppState() {

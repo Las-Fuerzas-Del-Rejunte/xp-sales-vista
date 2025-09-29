@@ -1,16 +1,10 @@
 // Minimal cliente de Supabase con fallback a modo simulado si no hay claves
 // Preparado para análisis estático: evita accesos dinámicos y exporta tipos simples
 
-let createClient = null;
-try {
-  // eslint-disable-next-line global-require, import/no-extraneous-dependencies
-  ({ createClient } = require('@supabase/supabase-js'));
-} catch (_e) {
-  createClient = null;
-}
+import { createClient } from '@supabase/supabase-js';
 
-const SUPABASE_URL = process.env.REACT_APP_SUPABASE_URL || '';
-const SUPABASE_ANON_KEY = process.env.REACT_APP_SUPABASE_ANON_KEY || '';
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || '';
+const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
 
 function createMockClient() {
   const usersKey = 'app.users';

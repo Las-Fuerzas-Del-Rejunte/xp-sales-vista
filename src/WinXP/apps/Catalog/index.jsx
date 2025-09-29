@@ -82,8 +82,8 @@ function Catalog() {
         console.log('🔄 Iniciando actualización del catálogo...');
         console.log('Usuario actual:', state.user);
         console.log('¿Conexión a Supabase activa?:', !!supabase);
-        console.log('URL de Supabase:', process.env.REACT_APP_SUPABASE_URL);
-        console.log('¿Tiene clave anónima?:', !!process.env.REACT_APP_SUPABASE_ANON_KEY);
+        console.log('URL de Supabase:', import.meta.env.VITE_SUPABASE_URL);
+        console.log('¿Tiene clave anónima?:', !!import.meta.env.VITE_SUPABASE_ANON_KEY);
         
         // Prueba de conexión directa
         try {

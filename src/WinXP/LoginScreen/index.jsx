@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
-import userAvatar from 'assets/windowsIcons/853(32x32).png';
+import bootScreenImage from '../../pages/bootScreen.png';
 import { useAppState } from 'state/AppStateContext';
+// import laLibertadAvanza from './laLibertadAvanza.jpg';
+import leonVLLC from './leonVLLC.png';
 
 function Field({ label, type, value, onChange }) {
   return (
@@ -91,7 +93,7 @@ function LoginModal({ onClose }) {
           padding: '10px 14px',
           boxShadow: 'inset 0 -1px 0 rgba(255,255,255,0.3)'
         }}>
-          <div style={{ fontSize: 20, fontWeight: 'bold' }}>Microsoft Windows <span style={{ color: '#ff7a00' }}>XP</span></div>
+          <div style={{ fontSize: 20, fontWeight: 'bold' }}>Sistema de Ventas <span style={{ color: '#ff7a00' }}>El Rejunte</span></div>
           <div style={{ opacity: 0.9, marginTop: 4, fontSize: 12 }}>{mode === 'login' ? 'Professional' : 'Create Account'}</div>
         </div>
 
@@ -181,55 +183,83 @@ function LoginScreen() {
           boxShadow: '0 -1px 0 rgba(0,0,0,0.25) inset',
         }}
       />
-      <div style={{ position: 'absolute', left: 46, top: 86, color: 'white' }}>
-        <div style={{ fontSize: 46, fontWeight: 'bold', letterSpacing: 0.5 }}>
-          Windows <span style={{ color: '#ff7a00' }}>XP</span>
-        </div>
-        <div style={{ marginTop: 22, fontSize: 18, textShadow: '1px 1px 2px #000' }}>
-          To begin, click your user name
-        </div>
-      </div>
-
       <div
-        role="button"
-        tabIndex={0}
-        onClick={() => setOpen(true)}
-        onKeyDown={e => (e.key === 'Enter' ? setOpen(true) : null)}
         style={{
           position: 'absolute',
-          left: '57%',
-          top: '44%',
-          transform: 'translate(-50%, -50%)',
+          inset: 0,                 // ocupa toda la pantalla
           display: 'flex',
-          alignItems: 'center',
-          cursor: 'pointer',
-          color: 'white',
+          alignItems: 'center',     // centra verticalmente
+          justifyContent: 'center', // centra horizontalmente
+          gap: 120,                 // espacio entre logo y usuario
         }}
       >
+        {/* Columna con logo + texto */}
         <div
           style={{
-            width: 96,
-            height: 96,
-            background: '#1a9bd7',
-            border: '3px solid #7fb3e7',
-            boxShadow: '0 0 0 4px #0a2b6a',
-            marginRight: 12,
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            marginTop: -31,  // mueve hacia arriba
+            marginLeft: -131,  // mueve hacia la derecha
+          }}
+        >
+          <img
+            src={bootScreenImage}
+            alt="Windows XP"
+            style={{
+              height: 140,
+              width: 'auto',
+              objectFit: 'contain',
+              filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.45))',
+            }}
+          />
+          <div
+            style={{
+              marginTop: 24,
+              fontSize: 18,
+              color: 'white',
+              maxWidth: 260,
+              textAlign: 'center',
+            }}
+          >
+            Para comenzar, ingrese con su Usuario
+          </div>
+        </div>
+
+        {/* Bloque del usuario */}
+        <div
+          role="button"
+          tabIndex={0}
+          onClick={() => setOpen(true)}
+          style={{
             display: 'flex',
             alignItems: 'center',
-            justifyContent: 'center',
+            cursor: 'pointer',
+            color: 'white',
+            gap: 12,
           }}
-        />
-        <img alt="avatar" src={userAvatar} style={{ position: 'absolute', width: 40, height: 40, left: 'calc(57% - 20px)', top: 'calc(44% - 20px)' }} />
-        <div style={{ fontSize: 22, textShadow: '1px 1px 2px #000', marginLeft: 6 }}>User</div>
-      </div>
-
-      <div style={{ position: 'absolute', left: 16, bottom: 12, color: '#fff' }}>
-        <span style={{ background: '#c0392b', padding: '6px 10px', borderRadius: 4, boxShadow: '0 0 0 2px rgba(255,255,255,0.25) inset' }}>Turn off computer</span>
+        >
+          <div
+            style={{
+              width: 96,
+              height: 96,
+              background: '#1a9bd7',
+              border: '3px solid #7fb3e7',
+              boxShadow: '0 0 0 4px #0a2b6a',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            <img alt="avatar" src={leonVLLC} style={{ width: 40, height: 40 }} />
+          </div>
+          <div style={{ fontSize: 22, textShadow: '1px 1px 2px #000' }}>Usuario</div>
+        </div>
       </div>
 
       <div style={{ position: 'absolute', right: 24, bottom: 10, color: 'rgba(255,255,255,0.9)', fontSize: 12 }}>
-        After you log on, you can add or change accounts.<br />
-        Just go to Control Panel and click User Accounts.
+        Presione en USUARIO<br />
+        Segun la cuenta que utilice conocera una parte del sistema.
       </div>
 
       {open && (
