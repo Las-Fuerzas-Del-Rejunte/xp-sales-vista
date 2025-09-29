@@ -1999,7 +1999,7 @@ ws@^8.18.2:
   resolved "https://registry.npmjs.org/ws/-/ws-8.18.3.tgz"
   integrity sha512-PEIGCY5tSlUt50cqyMXfCzX+oOPqN0vuGqWzbcJ2xvnkzkq46oOpz7dQaTDBdfICb4N14+GARUDw2XV2N4tvzg==
 
-xp.css@^0.2.0:
+xp.css@^0.2.6:
   version "0.2.6"
   resolved "https://registry.npmjs.org/xp.css/-/xp.css-0.2.6.tgz"
   integrity sha512-v0qUB4wOvyXIMLNid5bIpm+0n5aL4i8wE5dqJH8LNVxE04PxUUxjwf2rNzengegUIK03XC4vbfLVCPAfMLtuqA==

@@ -29,36 +29,30 @@ function Icons({
       .map(icon => icon.id);
     setSelectedIcons(selectedIds);
   }, [iconsRect, setSelectedIcons, selecting, mouse.docX, mouse.docY]);
-  // Dividir los iconos en dos columnas: 5 en la primera, 3 en la segunda
-  const firstColumnIcons = icons.slice(0, 5);
-  const secondColumnIcons = icons.slice(5, 8);
-
   return (
     <IconsContainer>
-      <ColumnContainer>
-        {firstColumnIcons.map(icon => (
-          <StyledIcon
+      {icons.map((icon, index) => {
+        const fallbackPosition = {
+          x: 60 + Math.floor(index / 5) * 120,
+          y: 100 + (index % 5) * 110,
+        };
+        const position = icon.position || fallbackPosition;
+        return (
+          <IconWrapper
             key={icon.id}
-            {...icon}
-            displayFocus={displayFocus}
-            onMouseDown={onMouseDown}
-            onDoubleClick={onDoubleClick}
-            measure={measure}
-          />
-        ))}
-      </ColumnContainer>
-      <ColumnContainer style={{ marginLeft: '30px' }}>
-        {secondColumnIcons.map(icon => (
-          <StyledIcon
-            key={icon.id}
-            {...icon}
-            displayFocus={displayFocus}
-            onMouseDown={onMouseDown}
-            onDoubleClick={onDoubleClick}
-            measure={measure}
-          />
-        ))}
-      </ColumnContainer>
+            style={{ left: `${position.x}px`, top: `${position.y}px` }}
+          >
+            <StyledIcon
+              {...icon}
+              displayFocus={displayFocus}
+              onMouseDown={onMouseDown}
+              onDoubleClick={onDoubleClick}
+              measure={measure}
+              iconSize={icon.iconSize || 36}
+            />
+          </IconWrapper>
+        );
+      })}
     </IconsContainer>
   );
 }
@@ -107,19 +101,17 @@ function Icon({
 
 const IconsContainer = styled.div`
   position: absolute;
-  margin-top: 40px;
-  margin-left: 40px;
-  display: flex;
+  inset: 0;
+  padding: 40px;
 `;
 
-const ColumnContainer = styled.div`
-  display: flex;
-  flex-direction: column;
+const IconWrapper = styled.div`
+  position: absolute;
 `;
 
 const StyledIcon = styled(Icon)`
-  width: 70px;
-  margin-bottom: 30px;
+  width: ${({ iconSize = 36 }) => Math.max(iconSize + 28, 70)}px;
+  margin-bottom: ${({ iconSize = 36 }) => Math.round(iconSize * 0.9)}px;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -149,16 +141,19 @@ const StyledIcon = styled(Icon)`
       isFocus && displayFocus ? '#0b61ff' : 'transparent'};
     text-align: center;
     flex-shrink: 1;
+    text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.85);
+    color: ${({ isFocus, displayFocus }) =>
+      isFocus && displayFocus ? '#fff' : '#f8f8f8'};
   }
   &__img__container {
-    width: 30px;
-    height: 30px;
+    width: ${({ iconSize = 36 }) => iconSize}px;
+    height: ${({ iconSize = 36 }) => iconSize}px;
     filter: ${({ isFocus, displayFocus }) =>
       isFocus && displayFocus ? 'drop-shadow(0 0 blue)' : ''};
   }
   &__img {
-    width: 30px;
-    height: 30px;
+    width: ${({ iconSize = 36 }) => iconSize}px;
+    height: ${({ iconSize = 36 }) => iconSize}px;
     opacity: ${({ isFocus, displayFocus }) =>
       isFocus && displayFocus ? 0.5 : 1};
   }

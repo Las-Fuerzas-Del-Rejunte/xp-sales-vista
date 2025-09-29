@@ -95,7 +95,6 @@ function Footer({
       <div className="footer__items right">
         <img className="footer__icon" src={sound} alt="" />
         <img className="footer__icon" src={usb} alt="" />
-        <img className="footer__icon" src={risk} alt="" />
         <div style={{ position: 'relative', width: 0, height: 0 }}>
           <Balloon />
         </div>

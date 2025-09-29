@@ -12,27 +12,33 @@ function HeaderButtons({
 }) {
   const buttonElements = {
     minimize: (
-      <button
-        key="minimize"
-        className="header__button header__button--minimize"
-        onMouseUp={onMinimize}
-      />
+      <div class="title-bar-controls">
+        <button
+          key="minimize"
+          className="header__button header__button--minimize"
+          onMouseUp={onMinimize}
+        />
+      </div>
+
     ),
     maximize: (
-      <button
-        key="maximize"
-        className={`header__button ${
-          maximized ? 'header__button--maximized' : 'header__button--maximize'
-        } ${resizable ? '' : 'header__button--disable'}`}
-        onMouseUp={onMaximize}
-      />
+      <div class="title-bar-controls">
+        <button
+          key="maximize"
+          className={`header__button ${maximized ? 'header__button--maximized' : 'header__button--maximize'
+            } ${resizable ? '' : 'header__button--disable'}`}
+          onMouseUp={onMaximize}
+        />
+      </div>
     ),
     close: (
-      <button
-        key="button"
-        className="header__button header__button--close"
-        onMouseUp={onClose}
-      />
+      <div class="title-bar-controls">
+        <button
+          key="button"
+          className="header__button header__button--close"
+          onMouseUp={onClose}
+        />
+      </div>
     ),
   };
 

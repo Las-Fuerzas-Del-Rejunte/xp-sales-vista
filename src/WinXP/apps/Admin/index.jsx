@@ -546,7 +546,7 @@ function Admin({ defaultTab = 'products', showLauncher = false, openCatalog }) {
                       onChange={(e) => setSearchQuery(e.target.value)}
                       style={{ 
                         width: '100%', 
-                        padding: '6px 8px', 
+                        padding: '0px 8px', 
                         fontSize: '12px', 
                         border: '1px solid #7aa2e8',
                         borderRadius: '4px',
@@ -586,7 +586,7 @@ function Admin({ defaultTab = 'products', showLauncher = false, openCatalog }) {
                           onChange={(e) => setFilterCategory(e.target.value)}
                           style={{ 
                             width: '100%', 
-                            padding: '6px 8px', 
+                            padding: '0px 8px', 
                             fontSize: '12px', 
                             border: '1px solid #7aa2e8',
                             borderRadius: '4px',
@@ -625,7 +625,7 @@ function Admin({ defaultTab = 'products', showLauncher = false, openCatalog }) {
                           onChange={(e) => setFilterBrand(e.target.value)}
                           style={{ 
                             width: '100%', 
-                            padding: '6px 8px', 
+                            padding: '0px 8px', 
                             fontSize: '12px', 
                             border: '1px solid #7aa2e8',
                             borderRadius: '4px',
@@ -1934,7 +1934,7 @@ function Admin({ defaultTab = 'products', showLauncher = false, openCatalog }) {
       </div>
 
       {/* Barra de estado */}
-      <div style={{ marginTop: 8, background: '#e8e4cf', border: '1px solid #b8b4a2', padding: '6px 8px', fontSize: 11 }}>
+      <div style={{ marginTop: 8, background: '#e8e4cf', border: '1px solid #b8b4a2', padding: '0px 8px', fontSize: 11 }}>
         Estado: Sistema operativo | Productos: {totalProducts} | Última actualización: {lastUpdate.toLocaleString()}
       </div>
     </Div>

@@ -23,19 +23,7 @@ function Balloon({ startAfter = 3000, duration = 15000 }) {
     start && (
       <Div show={show}>
         <div className="balloon__container">
-          <button onClick={() => setShow(false)} className="balloon__close" />
-          <div className="balloon__header">
-            <img className="balloon__header__img" src={risk} alt="risk" />
-            <span className="balloon__header__text">
-              Su equipo podría estar en riesgo
-            </span>
-          </div>
-          <p className="balloon__text__first">
-            Es posible que no esté instalado software antivirus
-          </p>
-          <p className="balloon__text__second">
-            Haga clic en este globo para solucionar este problema.
-          </p>
+          Hola Usuario!
         </div>
       </Div>
     )

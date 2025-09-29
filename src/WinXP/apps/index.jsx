@@ -12,8 +12,6 @@ import iePaper from 'assets/windowsIcons/ie-paper.png';
 import ie from 'assets/windowsIcons/ie.png';
 import mine from 'assets/minesweeper/mine-icon.png';
 import error from 'assets/windowsIcons/897(16x16).png';
-import computer from 'assets/windowsIcons/676(16x16).png';
-import computerLarge from 'assets/windowsIcons/676(32x32).png';
 import notepad from 'assets/windowsIcons/327(16x16).png';
 import notepadLarge from 'assets/windowsIcons/327(32x32).png';
 import winamp from 'assets/windowsIcons/winamp.png';
@@ -93,27 +91,7 @@ export const defaultAppState = [
     maximized: false,
     id: genId(),
     zIndex: genIndex(),
-  },
-  {
-    component: MyComputer,
-    header: {
-      title: 'Mi PC',
-      icon: computer,
-    },
-    defaultSize: {
-      width: 660,
-      height: 500,
-    },
-    defaultOffset: {
-      x: 250,
-      y: 40,
-    },
-    resizable: true,
-    minimized: false,
-    maximized: window.innerWidth < 800,
-    id: genId(),
-    zIndex: genIndex(),
-  },
+  }
 ];
 
 export const defaultIconState = [
@@ -123,13 +101,17 @@ export const defaultIconState = [
     title: 'The Chrome Explorer',
     component: InternetExplorer,
     isFocus: false,
+    position: { x: 60, y: 100 },
+    iconSize: 48,
   },
   {
     id: 1,
     icon: shopIcon,
-    title: 'Catálogo',
+    title: 'Ventas',
     component: Catalog,
     isFocus: false,
+    position: { x: 60, y: 210 },
+    iconSize: 48,
   },
   {
     id: 2,
@@ -137,6 +119,8 @@ export const defaultIconState = [
     title: 'Panel Admin',
     component: Admin,
     isFocus: false,
+    position: { x: 60, y: 320 },
+    iconSize: 48,
   },
   {
     id: 3,
@@ -144,13 +128,8 @@ export const defaultIconState = [
     title: 'Minesweeper',
     component: Minesweeper,
     isFocus: false,
-  },
-  {
-    id: 4,
-    icon: computerLarge,
-    title: 'Mi PC',
-    component: MyComputer,
-    isFocus: false,
+    position: { x: 60, y: 430 },
+    iconSize: 48,
   },
   {
     id: 5,
@@ -158,6 +137,8 @@ export const defaultIconState = [
     title: 'Notepad',
     component: Notepad,
     isFocus: false,
+    position: { x: 190, y: 100 },
+    iconSize: 48,
   },
   {
     id: 6,
@@ -165,6 +146,8 @@ export const defaultIconState = [
     title: 'Winamp',
     component: Winamp,
     isFocus: false,
+    position: { x: 190, y: 210 },
+    iconSize: 48,
   },
   {
     id: 7,
@@ -172,6 +155,8 @@ export const defaultIconState = [
     title: 'Paint',
     component: Paint,
     isFocus: false,
+    position: { x: 190, y: 320 },
+    iconSize: 48,
   },
   {
     id: 8,
@@ -179,6 +164,8 @@ export const defaultIconState = [
     title: 'Auth',
     component: Auth,
     isFocus: false,
+    position: { x: 190, y: 430 },
+    iconSize: 48,
   },
 ];
 
@@ -241,25 +228,6 @@ export const appSettings = {
     minimized: false,
     maximized: false,
     multiInstance: true,
-  },
-  'Abstract Computer': {
-    header: {
-      icon: computer,
-      title: 'Mi PC',
-    },
-    component: MyComputer,
-    defaultSize: {
-      width: 660,
-      height: 500,
-    },
-    defaultOffset: {
-      x: 260,
-      y: 50,
-    },
-    resizable: true,
-    minimized: false,
-    maximized: window.innerWidth < 800,
-    multiInstance: false,
   },
   AdminPanel: {
     header: {
@@ -348,10 +316,10 @@ export const appSettings = {
     maximized: false,
     multiInstance: false,
   },
-  Catálogo: {
+  Ventas: {
     header: {
       icon: shopIcon,
-      title: 'Catálogo',
+      title: 'Ventas',
     },
     component: Catalog,
     defaultSize: { width: 900, height: 550 },
