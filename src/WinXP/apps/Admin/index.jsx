@@ -401,9 +401,359 @@ function Admin({ defaultTab = 'products', showLauncher = false, openCatalog }) {
     // Debug ligero para ver qué llega del backend (quitar en producción)
     console.log('user->', state.user);
     if (isEmployee) {
-      return <div style={{ padding: 12 }}>Acceso restringido. Los empleados no tienen acceso al panel de administración.</div>;
+      return (
+        <Div>
+          <section className="com__toolbar">
+            <div className="com__options">
+              <WindowDropDowns items={mcDropDownData} onClickItem={() => {}} />
+            </div>
+            <img className="com__windows-logo" src={windows} alt="windows" />
+          </section>
+          <section className="com__function_bar">
+            <div className="com__function_bar__button--disable">
+              <img className="com__function_bar__icon" src={back} alt="" />
+              <span className="com__function_bar__text">Atrás</span>
+              <div className="com__function_bar__arrow" />
+            </div>
+            <div className="com__function_bar__button--disable">
+              <img className="com__function_bar__icon" src={forward} alt="" />
+              <div className="com__function_bar__arrow" />
+            </div>
+            <div className="com__function_bar__button">
+              <img className="com__function_bar__icon--normalize" src={up} alt="" />
+            </div>
+            <div className="com__function_bar__separate" />
+            <div className="com__function_bar__button">
+              <img className="com__function_bar__icon--normalize" src={search} alt="" />
+              <span className="com__function_bar__text">Buscar</span>
+            </div>
+            <div className="com__function_bar__button">
+              <img className="com__function_bar__icon--normalize" src={folderOpen} alt="" />
+              <span className="com__function_bar__text">Carpetas</span>
+            </div>
+          </section>
+          <section className="com__address_bar">
+            <div className="com__address_bar__title">Dirección</div>
+            <div className="com__address_bar__content">
+              <img src={computer} alt="ie" className="com__address_bar__content__img" />
+              <div className="com__address_bar__content__text">Panel de Administración</div>
+              <img src={dropdown} alt="dropdown" className="com__address_bar__content__img" />
+            </div>
+            <div className="com__address_bar__go">
+              <img className="com__address_bar__go__img" src={go} alt="go" />
+              <span className="com__address_bar__go__text">Ir</span>
+            </div>
+          </section>
+          <div className="com__content">
+            <div className="com__content__inner">
+              <div className="com__content__right">
+                <div className="com__content__right__card">
+                  <div className="com__content__right__card__header">Acceso Restringido</div>
+                  <div className="com__content__right__card__content" style={{ 
+                    display: 'flex', 
+                    flexDirection: 'column', 
+                    alignItems: 'center', 
+                    justifyContent: 'center', 
+                    minHeight: '400px',
+                    textAlign: 'center',
+                    padding: '40px 20px'
+                  }}>
+                    {/* Icono principal con animación sutil */}
+                    <div style={{
+                      fontSize: '64px',
+                      marginBottom: '20px',
+                      animation: 'pulse 2s infinite',
+                      filter: 'drop-shadow(2px 2px 4px rgba(0,0,0,0.3))'
+                    }}>
+                      🔒
+                    </div>
+                    
+                    {/* Título principal */}
+                    <div style={{
+                      fontSize: '18px',
+                      fontWeight: 'bold',
+                      color: '#cc0000',
+                      marginBottom: '12px',
+                      textShadow: '1px 1px 2px rgba(0,0,0,0.1)',
+                      fontFamily: 'Tahoma, Arial, sans-serif'
+                    }}>
+                      Acceso Denegado
+                    </div>
+                    
+                    {/* Mensaje principal */}
+                    <div style={{
+                      fontSize: '14px',
+                      color: '#333',
+                      marginBottom: '20px',
+                      maxWidth: '400px',
+                      lineHeight: '1.4',
+                      fontFamily: 'Tahoma, Arial, sans-serif'
+                    }}>
+                      Los empleados no tienen acceso al panel de administración.
+                    </div>
+                    
+                    {/* Panel de información estilo Windows XP */}
+                    <div style={{
+                      background: 'linear-gradient(to bottom, #f0f0f0 0%, #e0e0e0 100%)',
+                      border: '2px outset #f0f0f0',
+                      borderRadius: '6px',
+                      padding: '16px',
+                      marginBottom: '20px',
+                      boxShadow: 'inset 0 1px 0 #fff, 0 2px 4px rgba(0,0,0,0.1)',
+                      maxWidth: '350px',
+                      width: '100%'
+                    }}>
+                      <div style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        marginBottom: '12px'
+                      }}>
+                        <div style={{
+                          fontSize: '20px',
+                          marginRight: '8px'
+                        }}>ℹ️</div>
+                        <div style={{
+                          fontSize: '12px',
+                          fontWeight: 'bold',
+                          color: '#0c327d'
+                        }}>Información del Sistema</div>
+                      </div>
+                      
+                      <div style={{
+                        fontSize: '11px',
+                        color: '#333',
+                        lineHeight: '1.3'
+                      }}>
+                        <div style={{ marginBottom: '6px' }}>
+                          <strong>Usuario:</strong> {state.user?.email || 'No identificado'}
+                        </div>
+                        <div style={{ marginBottom: '6px' }}>
+                          <strong>Rol:</strong> Empleado
+                        </div>
+                        <div style={{ marginBottom: '6px' }}>
+                          <strong>Permisos:</strong> Solo acceso al catálogo de ventas
+                        </div>
+                        <div>
+                          <strong>Estado:</strong> <span style={{ color: '#cc0000' }}>Restringido</span>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    
+                    {/* Mensaje de ayuda */}
+                    <div style={{
+                      marginTop: '20px',
+                      fontSize: '10px',
+                      color: '#666',
+                      fontStyle: 'italic',
+                      maxWidth: '300px'
+                    }}>
+                      Si necesitas acceso administrativo, contacta al administrador del sistema.
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          {/* Barra de estado */}
+          <div style={{ 
+            marginTop: 8, 
+            background: '#e8e4cf', 
+            border: '1px solid #b8b4a2', 
+            padding: '0px 8px', 
+            fontSize: 11 
+          }}>
+            Estado: Acceso restringido | Usuario: {state.user?.email || 'No identificado'} | Rol: Empleado
+          </div>
+          
+          {/* CSS para animación */}
+          <style>{`
+            @keyframes pulse {
+              0% { transform: scale(1); }
+              50% { transform: scale(1.05); }
+              100% { transform: scale(1); }
+            }
+          `}</style>
+        </Div>
+      );
     }
-    return <div style={{ padding: 12 }}>Acceso restringido. Inicia sesión como Administrador.</div>;
+    return (
+      <Div>
+        <section className="com__toolbar">
+          <div className="com__options">
+            <WindowDropDowns items={mcDropDownData} onClickItem={() => {}} />
+          </div>
+          <img className="com__windows-logo" src={windows} alt="windows" />
+        </section>
+        <section className="com__function_bar">
+          <div className="com__function_bar__button--disable">
+            <img className="com__function_bar__icon" src={back} alt="" />
+            <span className="com__function_bar__text">Atrás</span>
+            <div className="com__function_bar__arrow" />
+          </div>
+          <div className="com__function_bar__button--disable">
+            <img className="com__function_bar__icon" src={forward} alt="" />
+            <div className="com__function_bar__arrow" />
+          </div>
+          <div className="com__function_bar__button">
+            <img className="com__function_bar__icon--normalize" src={up} alt="" />
+          </div>
+          <div className="com__function_bar__separate" />
+          <div className="com__function_bar__button">
+            <img className="com__function_bar__icon--normalize" src={search} alt="" />
+            <span className="com__function_bar__text">Buscar</span>
+          </div>
+          <div className="com__function_bar__button">
+            <img className="com__function_bar__icon--normalize" src={folderOpen} alt="" />
+            <span className="com__function_bar__text">Carpetas</span>
+          </div>
+        </section>
+        <section className="com__address_bar">
+          <div className="com__address_bar__title">Dirección</div>
+          <div className="com__address_bar__content">
+            <img src={computer} alt="ie" className="com__address_bar__content__img" />
+            <div className="com__address_bar__content__text">Panel de Administración</div>
+            <img src={dropdown} alt="dropdown" className="com__address_bar__content__img" />
+          </div>
+          <div className="com__address_bar__go">
+            <img className="com__address_bar__go__img" src={go} alt="go" />
+            <span className="com__address_bar__go__text">Ir</span>
+          </div>
+        </section>
+        <div className="com__content">
+          <div className="com__content__inner">
+            <div className="com__content__right">
+              <div className="com__content__right__card">
+                <div className="com__content__right__card__header">Acceso Requerido</div>
+                <div className="com__content__right__card__content" style={{ 
+                  display: 'flex', 
+                  flexDirection: 'column', 
+                  alignItems: 'center', 
+                  justifyContent: 'center', 
+                  minHeight: '400px',
+                  textAlign: 'center',
+                  padding: '40px 20px'
+                }}>
+                  {/* Icono principal con animación sutil */}
+                  <div style={{
+                    fontSize: '64px',
+                    marginBottom: '20px',
+                    animation: 'bounce 2s infinite',
+                    filter: 'drop-shadow(2px 2px 4px rgba(0,0,0,0.3))'
+                  }}>
+                    🔑
+                  </div>
+                  
+                  {/* Título principal */}
+                  <div style={{
+                    fontSize: '18px',
+                    fontWeight: 'bold',
+                    color: '#ff6b35',
+                    marginBottom: '12px',
+                    textShadow: '1px 1px 2px rgba(0,0,0,0.1)',
+                    fontFamily: 'Tahoma, Arial, sans-serif'
+                  }}>
+                    Autenticación Requerida
+                  </div>
+                  
+                  {/* Mensaje principal */}
+                  <div style={{
+                    fontSize: '14px',
+                    color: '#333',
+                    marginBottom: '20px',
+                    maxWidth: '400px',
+                    lineHeight: '1.4',
+                    fontFamily: 'Tahoma, Arial, sans-serif'
+                  }}>
+                    Inicia sesión como Administrador para acceder al panel de administración.
+                  </div>
+                  
+                  {/* Panel de información estilo Windows XP */}
+                  <div style={{
+                    background: 'linear-gradient(to bottom, #f0f0f0 0%, #e0e0e0 100%)',
+                    border: '2px outset #f0f0f0',
+                    borderRadius: '6px',
+                    padding: '16px',
+                    marginBottom: '20px',
+                    boxShadow: 'inset 0 1px 0 #fff, 0 2px 4px rgba(0,0,0,0.1)',
+                    maxWidth: '350px',
+                    width: '100%'
+                  }}>
+                    <div style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      marginBottom: '12px'
+                    }}>
+                      <div style={{
+                        fontSize: '20px',
+                        marginRight: '8px'
+                      }}>⚠️</div>
+                      <div style={{
+                        fontSize: '12px',
+                        fontWeight: 'bold',
+                        color: '#0c327d'
+                      }}>Información de Acceso</div>
+                    </div>
+                    
+                    <div style={{
+                      fontSize: '11px',
+                      color: '#333',
+                      lineHeight: '1.3'
+                    }}>
+                      <div style={{ marginBottom: '6px' }}>
+                        <strong>Estado:</strong> <span style={{ color: '#ff6b35' }}>No autenticado</span>
+                      </div>
+                      <div style={{ marginBottom: '6px' }}>
+                        <strong>Acceso requerido:</strong> Administrador
+                      </div>
+                      <div style={{ marginBottom: '6px' }}>
+                        <strong>Permisos necesarios:</strong> Panel de administración completo
+                      </div>
+                      <div>
+                        <strong>Acción:</strong> Iniciar sesión con credenciales de administrador
+                      </div>
+                    </div>
+                  </div>
+                  
+                  
+                  {/* Mensaje de ayuda */}
+                  <div style={{
+                    marginTop: '20px',
+                    fontSize: '10px',
+                    color: '#666',
+                    fontStyle: 'italic',
+                    maxWidth: '300px'
+                  }}>
+                    Contacta al administrador del sistema si necesitas acceso.
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        {/* Barra de estado */}
+        <div style={{ 
+          marginTop: 8, 
+          background: '#e8e4cf', 
+          border: '1px solid #b8b4a2', 
+          padding: '0px 8px', 
+          fontSize: 11 
+        }}>
+          Estado: No autenticado | Acceso requerido: Administrador | Panel: Restringido
+        </div>
+        
+        {/* CSS para animación */}
+        <style>{`
+          @keyframes bounce {
+            0%, 20%, 50%, 80%, 100% { transform: translateY(0); }
+            40% { transform: translateY(-10px); }
+            60% { transform: translateY(-5px); }
+          }
+        `}</style>
+      </Div>
+    );
   }
 
   const totalProducts = state.products.length;
