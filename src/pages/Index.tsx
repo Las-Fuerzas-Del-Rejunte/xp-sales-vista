@@ -10,26 +10,20 @@ const Index = () => {
   const { isAuthenticated, loading } = useAuth();
   const { currentView } = useApp();
 
-  // Show loading while checking authentication
-  if (loading) {
-    return <AuthPage />;
-  }
-
-  // Authentication Flow
-  if (!isAuthenticated) {
-    return <AuthPage />;
-  }
-
-  // Main Application
-  const renderCurrentView = () => {
-    return <AppRouter />;
-  };
-
   return (
     <WindowProvider>
-      <WindowsDesktop>
-        {renderCurrentView()}
-      </WindowsDesktop>
+      {/* Show loading while checking authentication */}
+      {loading && <AuthPage />}
+      
+      {/* Authentication Flow */}
+      {!loading && !isAuthenticated && <AuthPage />}
+      
+      {/* Main Application */}
+      {!loading && isAuthenticated && (
+        <WindowsDesktop>
+          <AppRouter />
+        </WindowsDesktop>
+      )}
     </WindowProvider>
   );
 };
