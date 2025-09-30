@@ -109,7 +109,7 @@ const SalesForm: React.FC<{ onClose: () => void }> = ({ onClose }) => {
 
   return (
     <div style={{ maxWidth: '1000px', margin: '0 auto' }}>
-      <Window title="Registrar Nueva Venta" width="100%">
+      <Window id="sales-form" icon="💵" title="Registrar Nueva Venta" width="100%">
         <form onSubmit={handleSubmit}>
           <fieldset style={{ border: '1px groove #c0c0c0', padding: '16px', marginBottom: '16px' }}>
             <legend style={{ fontWeight: 'bold' }}>Información de la Venta</legend>

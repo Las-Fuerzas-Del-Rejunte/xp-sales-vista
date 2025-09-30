@@ -140,7 +140,7 @@ const SalesDashboard: React.FC = () => {
   if (profile?.role !== 'admin') {
     return (
       <div style={{ maxWidth: '800px', margin: '0 auto' }}>
-        <Window title="Acceso Denegado" width="100%">
+        <Window id="sales-dashboard-denied" icon="🚫" title="Acceso Denegado" width="100%">
           <div style={{ textAlign: 'center', padding: '32px' }}>
             <div style={{ fontSize: '48px', marginBottom: '16px' }}>🚫</div>
             <h3>Acceso Restringido</h3>
@@ -153,7 +153,7 @@ const SalesDashboard: React.FC = () => {
 
   return (
     <div style={{ maxWidth: '1400px', margin: '0 auto' }}>
-      <Window title="Dashboard de Ventas - Panel Administrativo" width="100%">
+      <Window id="sales-dashboard" icon="📊" title="Dashboard de Ventas - Panel Administrativo" width="100%">
         <div>
           {loading ? (
             <div style={{ textAlign: 'center', padding: '32px' }}>

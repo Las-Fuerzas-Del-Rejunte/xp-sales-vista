@@ -65,7 +65,7 @@ const SupplierForm: React.FC<SupplierFormProps> = ({ supplier, onClose, onSucces
 
   return (
     <div style={{ maxWidth: '600px', margin: '0 auto' }}>
-      <Window title={supplier ? 'Editar Proveedor' : 'Nuevo Proveedor'} width="100%">
+      <Window id="supplier-form" icon="🚚" title={supplier ? 'Editar Proveedor' : 'Nuevo Proveedor'} width="100%">
         <form onSubmit={handleSubmit}>
           <fieldset style={{ border: '1px groove #c0c0c0', padding: '16px', marginBottom: '16px' }}>
             <legend style={{ fontWeight: 'bold' }}>Información del Proveedor</legend>

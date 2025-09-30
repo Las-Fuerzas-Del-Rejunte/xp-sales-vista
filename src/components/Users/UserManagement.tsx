@@ -70,7 +70,7 @@ const UserManagement: React.FC = () => {
   if (profile?.role !== 'admin') {
     return (
       <div style={{ maxWidth: '800px', margin: '0 auto' }}>
-        <Window title="Acceso Denegado" width="100%">
+        <Window id="users-denied" icon="🚫" title="Acceso Denegado" width="100%">
           <div style={{ textAlign: 'center', padding: '32px' }}>
             <div style={{ fontSize: '48px', marginBottom: '16px' }}>🚫</div>
             <h3>Acceso Restringido</h3>
@@ -86,7 +86,7 @@ const UserManagement: React.FC = () => {
 
   return (
     <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
-      <Window title="Gestión de Usuarios - Panel de Administración" width="100%">
+      <Window id="users" icon="👥" title="Gestión de Usuarios - Panel de Administración" width="100%">
         <div>
           {/* Toolbar */}
           <fieldset style={{ border: '1px groove #c0c0c0', padding: '8px', marginBottom: '16px' }}>
