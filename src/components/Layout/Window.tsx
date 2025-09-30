@@ -46,12 +46,9 @@ const Window: React.FC<WindowProps> = ({
           {title}
         </div>
         <div className="title-bar-controls">
-          <button aria-label="Minimize" onClick={null}></button>
-          <button aria-label="Maximize" onClick={null}></button>
-          <button aria-label="Close" onClick={null}></button>
-          {onClose && (
-            <button aria-label="Close" onClick={onClose}></button>
-          )}
+          <button aria-label="Minimize" onClick={handleMinimize}></button>
+          <button aria-label="Maximize" onClick={handleMaximize}></button>
+          <button aria-label="Close" onClick={onClose}></button>
         </div>
       </div>
       
