@@ -65,7 +65,7 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onSwitchToLogin }) => {
       minHeight: '100vh', 
       padding: '16px' 
     }}>
-      <Window title="Registro de Usuario - Sistema de Ventas" width="420px">
+      <Window id="register" icon="📝" title="Registro de Usuario - Sistema de Ventas" width="420px">
         <div style={{ padding: '16px' }}>
           {/* System Logo */}
           <div style={{ textAlign: 'center', marginBottom: '24px' }}>

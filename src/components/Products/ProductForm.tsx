@@ -100,6 +100,8 @@ const ProductForm: React.FC<ProductFormProps> = ({ product, onClose }) => {
   return (
     <div style={{ maxWidth: '600px', margin: '0 auto' }}>
       <Window 
+        id={product ? `product-form-${product.id}` : 'product-form-new'}
+        icon="📦"
         title={product ? 'Editar Producto' : 'Nuevo Producto'}
         onClose={onClose}
         width="100%"

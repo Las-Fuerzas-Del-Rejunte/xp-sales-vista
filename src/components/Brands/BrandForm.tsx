@@ -102,6 +102,8 @@ const BrandForm: React.FC<BrandFormProps> = ({ brand, onClose }) => {
   return (
     <div className="space-y-4">
       <Window 
+        id={brand ? `brand-form-${brand.id}` : 'brand-form-new'}
+        icon="🏢"
         title={brand ? 'Editar Marca' : 'Nueva Marca'}
         onClose={onClose}
         width="w-full max-w-xl"

@@ -18,7 +18,7 @@ const Dashboard: React.FC = () => {
 
   return (
     <div style={{ maxWidth: '800px', margin: '0 auto' }}>
-      <Window title={`Panel Principal - Bienvenido ${profile?.name}`} width="100%">
+      <Window id="dashboard" icon="🏠" title={`Panel Principal - Bienvenido ${profile?.name}`} width="100%">
         <div>
           {/* Welcome Message */}
           <fieldset style={{ border: '2px groove #c0c0c0', padding: '16px', marginBottom: '16px' }}>

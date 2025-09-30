@@ -48,7 +48,7 @@ const ProductList: React.FC = () => {
 
   return (
     <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
-      <Window title="Gestión de Productos - Panel de Administración" width="100%">
+      <Window id="products" icon="📦" title="Gestión de Productos - Panel de Administración" width="100%">
         <div>
           {/* Toolbar */}
           <fieldset style={{ border: '1px groove #c0c0c0', padding: '8px', marginBottom: '16px' }}>

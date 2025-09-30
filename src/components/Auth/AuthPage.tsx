@@ -107,7 +107,7 @@ const AuthPage: React.FC = () => {
         height: '100vh',
         backgroundColor: '#c0c0c0'
       }}>
-        <Window title="Cargando..." width="300px">
+        <Window id="auth-loading" icon="⏳" title="Cargando..." width="300px">
           <div style={{ textAlign: 'center', padding: '20px' }}>
             <div style={{ fontSize: '48px', marginBottom: '16px' }}>⏳</div>
             <p>Verificando autenticación...</p>
@@ -127,6 +127,8 @@ const AuthPage: React.FC = () => {
       padding: '20px'
     }}>
       <Window 
+        id="auth-main"
+        icon="🔐"
         title={isLogin ? "Iniciar Sesión - GestiónVentas" : "Registro - GestiónVentas"} 
         width="400px"
       >

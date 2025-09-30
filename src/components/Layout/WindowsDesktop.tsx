@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useAuth } from '../../contexts/SupabaseAuthContext';
 import { useApp } from '../../contexts/SupabaseAppContext';
+import { useWindow } from '../../contexts/WindowContext';
 import DesktopIcon from './DesktopIcon';
 
 interface WindowsDesktopProps {
@@ -10,6 +11,7 @@ interface WindowsDesktopProps {
 const WindowsDesktop: React.FC<WindowsDesktopProps> = ({ children }) => {
   const { profile, signOut } = useAuth();
   const { setCurrentView } = useApp();
+  const { windows, restoreWindow } = useWindow();
   const [showDesktop, setShowDesktop] = useState(true);
   const [showStartMenu, setShowStartMenu] = useState(false);
   const currentTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -223,25 +225,20 @@ const WindowsDesktop: React.FC<WindowsDesktopProps> = ({ children }) => {
         </div>
         
         {/* Application Area */}
-        <div className="taskbar-labels" style={{ flex: 1 }}>
-          {profile && !showDesktop && (
-            <button 
-              className="taskbar-label" 
-              style={{ backgroundColor: '#316ac5', color: 'white' }}
-              onClick={handleTaskbarClick}
+        <div className="taskbar-labels" style={{ flex: 1, display: 'flex', gap: '2px' }}>
+          {windows.map((window) => (
+            <button
+              key={window.id}
+              className="taskbar-label"
+              style={{
+                backgroundColor: window.isMinimized ? '#c0c0c0' : '#316ac5',
+                color: window.isMinimized ? 'black' : 'white',
+              }}
+              onClick={() => restoreWindow(window.id)}
             >
-              📋 Sistema de Gestión de Ventas
+              {window.icon} {window.title}
             </button>
-          )}
-          {showDesktop && (
-            <button 
-              className="taskbar-label" 
-              style={{ backgroundColor: '#c0c0c0', color: 'black' }}
-              onClick={handleTaskbarClick}
-            >
-              🖥️ Escritorio
-            </button>
-          )}
+          ))}
         </div>
         
         {/* System Tray */}

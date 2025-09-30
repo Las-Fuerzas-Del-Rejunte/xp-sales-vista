@@ -55,7 +55,7 @@ const BrandList: React.FC = () => {
 
   return (
     <div className="space-y-4">
-      <Window title="Gestión de Marcas - Panel de Administración">
+      <Window id="brands" icon="🏢" title="Gestión de Marcas - Panel de Administración">
         {/* Toolbar */}
         <div className="xp-toolbar mb-4">
           <button

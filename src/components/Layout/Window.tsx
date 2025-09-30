@@ -1,7 +1,10 @@
-import React, { useState } from 'react';
+import React, { useEffect } from 'react';
+import { useWindow } from '../../contexts/WindowContext';
 
 interface WindowProps {
+  id: string;
   title: string;
+  icon?: string;
   children: React.ReactNode;
   onClose?: () => void;
   width?: string;
@@ -10,51 +13,80 @@ interface WindowProps {
 }
 
 const Window: React.FC<WindowProps> = ({ 
-  title, 
+  id,
+  title,
+  icon = '📋',
   children, 
   onClose, 
   width = 'auto', 
   height = 'auto',
   className = ''
 }) => {
-  const [isMinimized, setIsMinimized] = useState(false);
-  const [isMaximized, setIsMaximized] = useState(false);
+  const { addWindow, removeWindow, minimizeWindow, maximizeWindow, setActiveWindow, getWindow } = useWindow();
+  const windowState = getWindow(id);
+
+  useEffect(() => {
+    addWindow(id, title, icon);
+    return () => {
+      if (onClose) {
+        removeWindow(id);
+      }
+    };
+  }, [id, title, icon]);
 
   const handleMinimize = () => {
-    setIsMinimized(!isMinimized);
+    minimizeWindow(id);
   };
 
   const handleMaximize = () => {
-    setIsMaximized(!isMaximized);
+    maximizeWindow(id);
   };
 
+  const handleClose = () => {
+    removeWindow(id);
+    if (onClose) {
+      onClose();
+    }
+  };
+
+  const handleWindowClick = () => {
+    setActiveWindow(id);
+  };
+
+  if (!windowState || windowState.isMinimized) {
+    return null;
+  }
+
   const windowStyle = {
-    width: isMaximized ? '100vw' : width,
-    height: isMaximized ? '100vh' : height,
-    position: isMaximized ? 'fixed' as const : 'relative' as const,
-    top: isMaximized ? 0 : 'auto',
-    left: isMaximized ? 0 : 'auto',
-    zIndex: isMaximized ? 1000 : 'auto',
-    display: isMinimized ? 'none' : 'block'
+    width: windowState.isMaximized ? '100vw' : width,
+    height: windowState.isMaximized ? '100vh' : height,
+    position: windowState.isMaximized ? 'fixed' as const : 'relative' as const,
+    top: windowState.isMaximized ? 0 : 'auto',
+    left: windowState.isMaximized ? 0 : 'auto',
+    zIndex: windowState.zIndex,
   };
 
   return (
-    <div className={`window window-xp ${className}`} style={windowStyle}>
+    <div 
+      className={`window window-xp ${className}`} 
+      style={windowStyle}
+      onClick={handleWindowClick}
+    >
       {/* Title Bar */}
       <div className="title-bar">
         <div className="title-bar-text">
-          {title}
+          {icon} {title}
         </div>
         <div className="title-bar-controls">
           <button aria-label="Minimize" onClick={handleMinimize}></button>
           <button aria-label="Maximize" onClick={handleMaximize}></button>
-          <button aria-label="Close" onClick={onClose}></button>
+          <button aria-label="Close" onClick={handleClose}></button>
         </div>
       </div>
       
       {/* Window Content */}
       <div className="window-body" style={{ 
-        height: isMaximized ? 'calc(100vh - 32px)' : 'auto',
+        height: windowState.isMaximized ? 'calc(100vh - 32px)' : 'auto',
         overflow: 'auto'
       }}>
         {children}

@@ -52,7 +52,7 @@ const ProductCatalog: React.FC = () => {
 
   return (
     <div className="space-y-4">
-      <Window title="Catálogo de Productos - Explorar Productos Disponibles">
+      <Window id="catalog" icon="🛒" title="Catálogo de Productos - Explorar Productos Disponibles">
         {/* Toolbar */}
         <div className="xp-toolbar mb-4">
           <button

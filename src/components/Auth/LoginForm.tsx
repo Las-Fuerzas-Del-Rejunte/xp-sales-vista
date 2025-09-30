@@ -44,7 +44,7 @@ const LoginForm: React.FC<LoginFormProps> = ({ onSwitchToRegister }) => {
       minHeight: '100vh', 
       padding: '16px' 
     }}>
-      <Window title="Iniciar Sesión - Sistema de Ventas" width="400px">
+      <Window id="login" icon="🔑" title="Iniciar Sesión - Sistema de Ventas" width="400px">
         <div style={{ padding: '16px' }}>
           {/* System Logo */}
           <div style={{ textAlign: 'center', marginBottom: '24px' }}>

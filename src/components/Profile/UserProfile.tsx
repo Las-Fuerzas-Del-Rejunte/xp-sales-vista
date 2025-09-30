@@ -80,7 +80,7 @@ const UserProfile: React.FC = () => {
 
   return (
     <div className="space-y-4">
-      <Window title="Mi Perfil - Información Personal">
+      <Window id="profile" icon="👤" title="Mi Perfil - Información Personal">
         {/* Toolbar */}
         <div className="xp-toolbar mb-4">
           <button
