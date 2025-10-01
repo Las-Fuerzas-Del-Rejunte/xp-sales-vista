@@ -55,6 +55,12 @@ function createMockClient() {
         const s = read(sessionsKey, null);
         return { data: { session: s }, error: null };
       },
+      async signInWithOAuth({ provider }) {
+        return {
+          data: { provider, url: '' },
+          error: { message: `OAuth no disponible en modo sin conexión (${provider})` },
+        };
+      },
       async updateUser(updates) {
         const s = read(sessionsKey, null);
         if (!s || !s.user) return { data: { user: null }, error: { message: 'No autenticado' } };
@@ -78,14 +84,23 @@ function createMockClient() {
   return api;
 }
 
+const hasCredentials = Boolean(SUPABASE_URL && SUPABASE_ANON_KEY);
+
+export const supabase = hasCredentials
+  ? createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+      auth: {
+        persistSession: true,
+        autoRefreshToken: true,
+        detectSessionInUrl: true,
+      },
+    })
+  : createMockClient();
+
 export function getSupabaseClient() {
-  if (createClient && SUPABASE_URL && SUPABASE_ANON_KEY) {
-    return createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  if (!hasCredentials) {
+    console.warn('[supabase] Faltan credenciales VITE_SUPABASE_URL o VITE_SUPABASE_ANON_KEY. Usando modo local.');
   }
-  return createMockClient();
+  return supabase;
 }
 
 export default getSupabaseClient;
-
-
-

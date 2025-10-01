@@ -17,6 +17,7 @@ import notepadLarge from 'assets/windowsIcons/327(32x32).png';
 import winamp from 'assets/windowsIcons/winamp.png';
 import paintLarge from 'assets/windowsIcons/680(32x32).png';
 import paint from 'assets/windowsIcons/680(16x16).png';
+import computerLarge from 'assets/windowsIcons/676(32x32).png';
 import userIcon from 'assets/windowsIcons/214(16x16).png';
 import shopIcon from 'assets/windowsIcons/74(32x32).png';
 import adminIcon from 'assets/windowsIcons/67(32x32).png';
@@ -129,6 +130,15 @@ export const defaultIconState = [
     component: Minesweeper,
     isFocus: false,
     position: { x: 60, y: 430 },
+    iconSize: 48,
+  },
+  {
+    id: 4,
+    icon: computerLarge,
+    title: 'Mi PC',
+    component: MyComputer,
+    isFocus: false,
+    position: { x: 60, y: 540 },
     iconSize: 48,
   },
   {

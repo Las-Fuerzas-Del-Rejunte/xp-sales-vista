@@ -25,10 +25,64 @@ function LoginModal({ onClose }) {
   const [password, setPassword] = useState('');
   const [message, setMessage] = useState('');
 
+  const translateError = errorMessage => {
+    const dictionary = {
+      'Invalid login credentials': 'Credenciales de inicio de sesión inválidas',
+      'Email not confirmed': 'Debes confirmar tu correo para continuar',
+      'User not found': 'Usuario no encontrado',
+      'Invalid email': 'Dirección de email inválida',
+      'Password should be at least 6 characters': 'La contraseña debe tener al menos 6 caracteres',
+      'Password should be at least 6 characters long': 'La contraseña debe tener al menos 6 caracteres',
+      'Unable to validate email address: invalid format': 'Formato de email inválido',
+      'User already registered': 'Este email ya está registrado',
+      'Signup requires a valid password': 'Debes ingresar una contraseña válida',
+      'Failed to fetch': 'Error de conexión. Revisa tu internet e intenta nuevamente',
+      'Network request failed': 'Error de red. Intenta nuevamente',
+      'Request timeout': 'Se agotó el tiempo de espera. Intenta nuevamente',
+      'OAuth provider error': 'Error con el proveedor de autenticación',
+      'Too many requests': 'Demasiados intentos. Espera un momento',
+      'Service unavailable': 'Servicio no disponible. Intenta más tarde',
+    };
+
+    if (!errorMessage) return '';
+    const key = dictionary[errorMessage];
+    if (key) return key;
+
+    if (errorMessage.includes('Invalid login credentials')) {
+      return 'Credenciales de inicio de sesión inválidas';
+    }
+    if (errorMessage.includes('Email not confirmed')) {
+      return 'Email no confirmado. Revisa tu correo electrónico';
+    }
+    if (errorMessage.includes('User already registered')) {
+      return 'Este email ya está registrado';
+    }
+    if (errorMessage.includes('Password should be at least')) {
+      return 'La contraseña debe tener al menos 6 caracteres';
+    }
+    if (errorMessage.includes('Invalid email')) {
+      return 'Dirección de email inválida';
+    }
+    if (errorMessage.includes('OAuth')) {
+      return 'No pudimos iniciar con Google. Inténtalo de nuevo.';
+    }
+    if (errorMessage.includes('Network') || errorMessage.includes('Failed to fetch')) {
+      return 'Error de conexión. Verifica tu internet e inténtalo nuevamente';
+    }
+    return 'Ocurrió un error inesperado. Intenta nuevamente.';
+  };
+
   async function onLogin() {
     setMessage('');
     const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) return setMessage(error.message);
+    if (error) {
+      const translated = translateError(error.message);
+      setMessage(translated);
+      if (error.message && error.message.includes('Invalid login credentials')) {
+        setMode('register');
+      }
+      return;
+    }
     dispatch({ type: ACTIONS.SET_SESSION, payload: { session: data.session, user: data.user } });
   }
   async function onRegister() {
@@ -39,17 +93,45 @@ function LoginModal({ onClose }) {
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
-      options: {},
+      options: {
+        emailRedirectTo: `${window.location.origin}/`,
+      },
     });
-    if (error) return setMessage(error.message);
-    dispatch({ type: ACTIONS.SET_SESSION, payload: { session: data.session, user: data.user } });
+    if (error) {
+      setMessage(translateError(error.message));
+      return;
+    }
+
+    if (data.session && data.user) {
+      dispatch({ type: ACTIONS.SET_SESSION, payload: { session: data.session, user: data.user } });
+      setMessage('Registro completado. ¡Bienvenido!');
+    } else {
+      setMode('login');
+      setMessage('Hemos enviado un correo de confirmación. Revisa tu bandeja para activar la cuenta.');
+    }
   }
   async function onLoginWithGoogle() {
     try {
       setMessage('');
-      const { data, error } = await supabase.auth.signInWithOAuth({ provider: 'google' });
-      if (error) setMessage(error.message);
-    } catch (e) { setMessage('No se pudo iniciar con Google'); }
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: `${window.location.origin}/`,
+        },
+      });
+      if (error) {
+        setMessage(translateError(error.message));
+        return;
+      }
+      // Supabase redirige automáticamente; si devuelve URL, forzamos la navegación.
+      if (data?.url) {
+        window.location.href = data.url;
+      } else {
+        setMessage('Abre la ventana emergente de Google para continuar.');
+      }
+    } catch (e) {
+      setMessage(translateError(e?.message || '')); 
+    }
   }
   function onKeyDown(e) {
     if (e.key === 'Enter') {
@@ -105,14 +187,14 @@ function LoginModal({ onClose }) {
 
             <div style={{ display: 'flex', gap: 8, marginTop: 10, flexWrap: 'wrap' }}>
               <button
-                onClick={onLogin}
+                onClick={mode === 'login' ? onLogin : onRegister}
                 style={{
                   background: 'linear-gradient(#e6f0ff,#cfe0ff)',
                   border: '1px solid #7aa2e8',
                   padding: '6px 12px',
                   cursor: 'pointer'
                 }}
-              >Acceder</button>
+              >{mode === 'login' ? 'Acceder' : 'Crear cuenta'}</button>
               <button
                 onClick={onLoginWithGoogle}
                 style={{ background: 'linear-gradient(#fff,#eee)', border: '1px solid #7aa2e8', padding: '6px 12px', cursor: 'pointer' }}
