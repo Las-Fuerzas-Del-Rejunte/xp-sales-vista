@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useEffect, useMemo, useReducer } from 'react';
 import { getSupabaseClient } from 'lib/supabaseClient';
+import { fetchBrands, fetchProducts } from 'lib/apiClient';
 
 const PERSIST_KEY = 'app.state.v1';
 
@@ -137,27 +138,67 @@ export function AppStateProvider({ children }) {
       const mergedUser = baseUser ? await resolveUserWithRole(baseUser) : null;
       dispatch({ type: ACTIONS.SET_SESSION, payload: { session, user: mergedUser } });
     });
-    // Cargar datos iniciales desde Supabase si existen
-    (async () => {
-      try {
-        if (supabase && supabase.from) {
-          const { data: brands, error: bErr } = await supabase.from('brands').select('*');
-          if (!bErr && Array.isArray(brands)) {
-            const mapped = brands.map(b => ({ id: b.id || `br_${b.name}` , name: b.name, description: b.description || '', logo: b.logo || '' }));
-            dispatch({ type: ACTIONS.SET_BRANDS, payload: mapped });
-          }
-          const { data: products, error: pErr } = await supabase.from('products').select('*');
-          if (!pErr && Array.isArray(products)) {
-            const mapped = products.map(p => ({ id: p.id || `prd_${p.name}`, name: p.name, description: p.description || '', category: p.category || 'general', brandId: p.brand_id || p.brandId || '', price: Number(p.price || 0), image: p.image || '' }));
-            dispatch({ type: ACTIONS.SET_PRODUCTS, payload: mapped });
-          }
-        }
-      } catch (_e) {}
-    })();
+    // Los datos de catálogo se cargarán cuando exista sesión
+
     return () => {
       try { authListener.subscription.unsubscribe(); } catch (_e) {}
     };
   }, [supabase]);
+
+  useEffect(() => {
+    if (!state.user) {
+      dispatch({ type: ACTIONS.SET_BRANDS, payload: [] });
+      dispatch({ type: ACTIONS.SET_PRODUCTS, payload: [] });
+      return;
+    }
+
+    let cancelled = false;
+
+    (async () => {
+      try {
+        const [brands, products] = await Promise.all([
+          fetchBrands().catch(() => null),
+          fetchProducts().catch(() => null),
+        ]);
+
+        if (!cancelled && Array.isArray(brands)) {
+          const normalizedBrands = brands.map((brand) => ({
+            id: brand?.id ?? null,
+            name: brand?.name ?? '',
+            description: brand?.description ?? '',
+            logo: brand?.logo ?? '',
+            userId: brand?.userId ?? brand?.user_id ?? null,
+          }));
+          dispatch({ type: ACTIONS.SET_BRANDS, payload: normalizedBrands });
+        }
+
+        if (!cancelled && Array.isArray(products)) {
+          const normalizedProducts = products.map((product) => ({
+            id: product?.id ?? null,
+            name: product?.name ?? '',
+            description: product?.description ?? '',
+            category: product?.category ?? 'general',
+            brandId: product?.brandId ?? product?.brand_id ?? '',
+            price: Number(product?.price ?? 0),
+            image: product?.image ?? '',
+            stock_quantity: Number(product?.stockQuantity ?? product?.stock_quantity ?? 0),
+            min_stock: Number(product?.minStock ?? product?.min_stock ?? 0),
+            userId: product?.userId ?? product?.user_id ?? null,
+          }));
+          dispatch({ type: ACTIONS.SET_PRODUCTS, payload: normalizedProducts });
+        }
+      } catch (_error) {
+        if (!cancelled) {
+          dispatch({ type: ACTIONS.SET_BRANDS, payload: [] });
+          dispatch({ type: ACTIONS.SET_PRODUCTS, payload: [] });
+        }
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [state.user]);
 
   useEffect(() => {
     // Persistimos solo datos de catálogo; nunca la sesión

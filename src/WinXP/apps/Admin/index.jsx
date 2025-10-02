@@ -10,12 +10,19 @@ import dropdown from 'assets/windowsIcons/dropdown.png';
 import pullup from 'assets/windowsIcons/pullup.png';
 import windows from 'assets/windowsIcons/windows.png';
 import { WindowDropDowns } from 'components';
+import { saveProduct as apiSaveProduct, deleteProduct as apiDeleteProduct, saveBrand as apiSaveBrand, deleteBrand as apiDeleteBrand, fetchSalesByEmployee, updateSale as apiUpdateSale, deleteSale as apiDeleteSale } from 'lib/apiClient';
 import mcDropDownData from 'WinXP/apps/MyComputer/dropDownData';
 import back from 'assets/windowsIcons/back.png';
 import forward from 'assets/windowsIcons/forward.png';
 import up from 'assets/windowsIcons/up.png';
 import edit from 'assets/windowsIcons/edit.png';
 import refresh from 'assets/windowsIcons/refresh.png';
+
+const emitCatalogRefresh = () => {
+  try {
+    window.dispatchEvent(new Event('catalog:refresh'));
+  } catch (_error) {}
+};
 
 function Field({ label, children }) {
   return (
@@ -27,15 +34,12 @@ function Field({ label, children }) {
 }
 
 function Admin({ defaultTab = 'products', showLauncher = false, openCatalog }) {
-  const { state, dispatch, ACTIONS, supabase } = useAppState();
+  const { state, dispatch, ACTIONS } = useAppState();
   const [tab, setTab] = useState(defaultTab);
-  // Derivar rol de distintas fuentes y no bloquear mientras user no está hidratado
-  const userRole = state.user && (state.user.role || (state.user.user_metadata && state.user.user_metadata.role));
-  const roleStr = (userRole ? String(userRole) : '').toLowerCase();
-  const emailStr = state.user && state.user.email ? String(state.user.email).toLowerCase() : '';
-  const isEmployee = (emailStr === 'nacho_g88@hotmail.com') || (!!roleStr && ['empleado','employee'].some(r => roleStr.includes(r)));
-  // Regla simplificada y prioritaria: cualquier usuario distinto al empleado tiene acceso
-  const isAdmin = !!emailStr && !isEmployee;
+  // Derivar el rol a partir del perfil sincronizado
+  const userRole = (state.user?.role ?? '').toLowerCase();
+  const isAdmin = ['admin', 'manager'].includes(userRole);
+  const isEmployee = ['empleado', 'employee'].includes(userRole);
   const [lastUpdate, setLastUpdate] = useState(new Date());
   const [sales, setSales] = useState([]);
   const [salesRefreshToken, setSalesRefreshToken] = useState(0);
@@ -61,67 +65,62 @@ function Admin({ defaultTab = 'products', showLauncher = false, openCatalog }) {
     return () => window.removeEventListener('sales:refresh', onRefresh);
   }, []);
 
-  // Cargar ventas reales desde Supabase
-  const loadSalesFromSupabase = React.useCallback(async () => {
+  // Cargar ventas reales desde la API
+  const loadSales = React.useCallback(async () => {
     try {
-      if (!supabase || !supabase.from || !state.user || !state.user.id) return;
-      const { data, error } = await supabase
-        .from('sales')
-        .select('id, employee_id, total_amount, sale_date, notes')
-        .eq('employee_id', state.user.id)
-        .order('sale_date', { ascending: false })
-        .limit(200);
-      if (error) { console.error('❌ Error al cargar ventas:', error); return; }
-      const mapped = (data || []).map(row => {
+      if (!state.user || !state.user.id) return;
+
+      const salesData = await fetchSalesByEmployee(state.user.id);
+      const mapped = (salesData || []).map((row) => {
         let paymentMethod = '';
         let customerName = '';
         let customerEmail = '';
         try {
-          const n = row.notes && typeof row.notes === 'string' ? JSON.parse(row.notes) : row.notes;
-          if (n) {
-            paymentMethod = n.paymentMethod || '';
-            if (n.customerData) {
-              customerName = n.customerData.name || '';
-              customerEmail = n.customerData.email || '';
+          const notes = typeof row.notes === 'string' ? JSON.parse(row.notes) : row.notes;
+          if (notes) {
+            paymentMethod = notes.paymentMethod || '';
+            if (notes.customerData) {
+              customerName = notes.customerData.name || '';
+              customerEmail = notes.customerData.email || '';
             }
           }
-        } catch (_e) {}
+        } catch (_err) {}
+
         return {
           id: row.id,
           customerName,
           customerEmail,
-          total: Number(row.total_amount || 0),
+          total: Number(row.totalAmount || 0),
           paymentMethod,
-          date: row.sale_date ? new Date(row.sale_date) : new Date(),
-          seller: state.user && state.user.email ? state.user.email : ''
+          date: row.saleDate ? new Date(row.saleDate) : new Date(),
+          seller: state.user && state.user.email ? state.user.email : '',
         };
       });
+
       setSales(mapped);
-    } catch (e) {
-      console.error('❌ Error inesperado cargando ventas:', e);
+    } catch (error) {
+      console.error('? Error al cargar ventas:', error);
     }
-  }, [supabase, state.user]);
+  }, [state.user]);
+
 
   // Recargar cuando se abre la pestaña Ventas o cuando haya refresh
   React.useEffect(() => {
-    if (tab === 'sales') loadSalesFromSupabase();
+    if (tab === 'sales') loadSales();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tab, salesRefreshToken]);
+  }, [tab, salesRefreshToken, loadSales]);
 
   async function onDeleteSale(id) {
-    // eslint-disable-next-line no-alert
     if (!window.confirm('¿Eliminar esta venta? Esta acción no se puede deshacer.')) return;
     try {
-      if (supabase && supabase.from) {
-        await supabase.from('sale_items').delete().eq('sale_id', id); // por si no hay ON DELETE CASCADE
-        await supabase.from('sales').delete().eq('id', id);
-      }
+      await apiDeleteSale(id);
       setEditingSale(null);
       setSalesRefreshToken(x => x + 1);
     } catch (e) {
-      console.error('❌ Error eliminando venta:', e);
+      console.error('¿ Error eliminando venta:', e);
     }
   }
+
 
   function startEditSale(sale) {
     setEditingSale(sale);
@@ -137,19 +136,18 @@ function Admin({ defaultTab = 'products', showLauncher = false, openCatalog }) {
     try {
       const newNotes = { paymentMethod: editPaymentMethod, customerData: { name: editCustomerName, email: editCustomerEmail } };
       const payload = {
-        total_amount: Number(editTotal || 0),
-        sale_date: editDate ? new Date(editDate).toISOString() : new Date().toISOString(),
-        notes: JSON.stringify(newNotes)
+        totalAmount: Number(editTotal || 0),
+        saleDate: editDate ? new Date(editDate).toISOString() : new Date().toISOString(),
+        notes: JSON.stringify(newNotes),
       };
-      if (supabase && supabase.from) {
-        await supabase.from('sales').update(payload).eq('id', editingSale.id);
-      }
+      await apiUpdateSale(editingSale.id, payload);
       setEditingSale(null);
       setSalesRefreshToken(x => x + 1);
     } catch (e) {
-      console.error('❌ Error actualizando venta:', e);
+      console.error('¿ Error actualizando venta:', e);
     }
   }
+
 
   // Responsive: detectar ventana angosta para apilar columnas
   const [isNarrow, setIsNarrow] = useState(false);
@@ -330,28 +328,61 @@ function Admin({ defaultTab = 'products', showLauncher = false, openCatalog }) {
   }
   async function saveProduct() {
     if (!canSaveProduct) return;
-    const payload = { id: pId || undefined, name: pName, description: pDesc, category: pCategory, brand_id: pBrandId, price: Number(pPrice), image: pImage, stock_quantity: Number(pStock || 0), min_stock: Math.floor(Number(pStock || 0) * 0.3) };
+    if (!state.user || !state.user.id) {
+      alert('Debe iniciar sesión para gestionar productos.');
+      return;
+    }
+    const payload = {
+      id: pId || undefined,
+      userId: state.user.id,
+      brandId: pBrandId,
+      lineId: null,
+      name: pName,
+      description: pDesc,
+      category: pCategory,
+      price: Number(pPrice),
+      image: pImage,
+      stockQuantity: Number(pStock || 0),
+      minStock: Math.floor(Number(pStock || 0) * 0.3),
+    };
     try {
-      if (supabase && supabase.from) {
-        const table = supabase.from('products');
-        if (pId) await table.update(payload).eq('id', pId);
-        else {
-          const { data, error } = await table.insert(payload).select();
-          if (!error && Array.isArray(data) && data[0] && data[0].id) payload.id = data[0].id;
-        }
-      }
-    } catch (_e) {}
-    dispatch({ type: ACTIONS.UPSERT_PRODUCT, payload: { id: payload.id, name: pName, description: pDesc, category: pCategory, brandId: pBrandId, price: Number(pPrice), image: pImage, stock_quantity: Number(pStock || 0), min_stock: Math.floor(Number(pStock || 0) * 0.3) } });
+      const saved = await apiSaveProduct(payload);
+      const stateProduct = {
+        id: saved?.id || payload.id,
+        name: saved?.name ?? pName,
+        description: saved?.description ?? pDesc,
+        category: saved?.category ?? pCategory,
+        brandId: saved?.brandId ?? saved?.brand_id ?? pBrandId,
+        price: Number(saved?.price ?? payload.price ?? 0),
+        image: saved?.image ?? pImage ?? "",
+        stock_quantity: Number(saved?.stockQuantity ?? saved?.stock_quantity ?? payload.stockQuantity ?? 0),
+        min_stock: Number(saved?.minStock ?? saved?.min_stock ?? payload.minStock ?? 0),
+      };
+      dispatch({ type: ACTIONS.UPSERT_PRODUCT, payload: stateProduct });
+      emitCatalogRefresh();
+    } catch (e) {
+      console.error('¿ Error guardando producto:', e);
+    }
     clearProductForm();
     setShowNewProductForm(false);
     setLastUpdate(new Date());
   }
+
   async function deleteProduct(id) {
     openConfirm('¿Eliminar producto?', async () => {
-      try { if (supabase && supabase.from) await supabase.from('products').delete().eq('id', id); } catch (_e) {}
-      dispatch({ type: ACTIONS.DELETE_PRODUCT, payload: id }); setLastUpdate(new Date());
+      try {
+        await apiDeleteProduct(id);
+        dispatch({ type: ACTIONS.DELETE_PRODUCT, payload: id });
+        setLastUpdate(new Date());
+        emitCatalogRefresh();
+      } catch (e) {
+        console.error('¿ Error eliminando producto:', e);
+      } finally {
+        closeConfirm();
+      }
     });
   }
+
 
   function loadBrand(id) {
     const b = state.brands.find(x => x.id === id);
@@ -364,21 +395,34 @@ function Admin({ defaultTab = 'products', showLauncher = false, openCatalog }) {
   }
   async function saveBrand() {
     if (!bName) return;
-    const payload = { id: bId || undefined, name: bName, description: bDesc, logo: bLogo };
+    if (!state.user || !state.user.id) {
+      alert('Debe iniciar sesión para gestionar marcas.');
+      return;
+    }
+    const payload = {
+      id: bId || undefined,
+      userId: state.user.id,
+      name: bName,
+      description: bDesc,
+      logo: bLogo,
+    };
     try {
-      if (supabase && supabase.from) {
-        const table = supabase.from('brands');
-        if (bId) await table.update(payload).eq('id', bId);
-        else {
-          const { data, error } = await table.insert(payload).select();
-          if (!error && Array.isArray(data) && data[0] && data[0].id) payload.id = data[0].id;
-        }
-      }
-    } catch (_e) {}
-    dispatch({ type: ACTIONS.UPSERT_BRAND, payload: { id: payload.id, name: bName, description: bDesc, logo: bLogo } });
+      const saved = await apiSaveBrand(payload);
+      const stateBrand = {
+        id: saved?.id || payload.id,
+        name: saved?.name ?? bName,
+        description: saved?.description ?? bDesc ?? "",
+        logo: saved?.logo ?? bLogo ?? "",
+      };
+      dispatch({ type: ACTIONS.UPSERT_BRAND, payload: stateBrand });
+      emitCatalogRefresh();
+    } catch (e) {
+      console.error('¿ Error guardando marca:', e);
+    }
     clearBrandForm();
     setLastUpdate(new Date());
   }
+
 
   const isBrandDirty = useMemo(() => {
     if (!bId) return !!(bName || bDesc || bLogo);
@@ -387,12 +431,21 @@ function Admin({ defaultTab = 'products', showLauncher = false, openCatalog }) {
   }, [bId, bOriginal, bName, bDesc, bLogo]);
   async function deleteBrand(id) {
     const hasProducts = state.products.some(p => p.brandId === id);
-    if (hasProducts) return; // impedimos eliminación si hay productos asociados
+    if (hasProducts) return;
     openConfirm('¿Eliminar marca?', async () => {
-      try { if (supabase && supabase.from) await supabase.from('brands').delete().eq('id', id); } catch (_e) {}
-      dispatch({ type: ACTIONS.DELETE_BRAND, payload: id }); setLastUpdate(new Date());
+      try {
+        await apiDeleteBrand(id);
+        dispatch({ type: ACTIONS.DELETE_BRAND, payload: id });
+        setLastUpdate(new Date());
+        emitCatalogRefresh();
+      } catch (e) {
+        console.error('¿ Error eliminando marca:', e);
+      } finally {
+        closeConfirm();
+      }
     });
   }
+
 
   if (!state.user) {
     return <div style={{ padding: 12 }}>Cargando sesión…</div>;

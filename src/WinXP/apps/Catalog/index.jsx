@@ -9,19 +9,63 @@ import dropdown from 'assets/windowsIcons/dropdown.png';
 import pullup from 'assets/windowsIcons/pullup.png';
 import windows from 'assets/windowsIcons/windows.png';
 import { WindowDropDowns } from 'components';
+import { fetchBrands, fetchProducts, fetchProductsByIds, updateProductStock, createSale } from 'lib/apiClient';
 import mcDropDownData from 'WinXP/apps/MyComputer/dropDownData';
 import back from 'assets/windowsIcons/back.png';
 import forward from 'assets/windowsIcons/forward.png';
 import up from 'assets/windowsIcons/up.png';
 
 function Catalog() {
-  const { state, dispatch, ACTIONS, supabase } = useAppState();
+  const { state, dispatch, ACTIONS } = useAppState();
   const [detailId, setDetailId] = useState(null);
   const [query, setQuery] = useState(state.catalog.query || '');
   const [brandId, setBrandId] = useState(state.catalog.brandId || 'all');
   const [category, setCategory] = useState(state.catalog.category || 'all');
   const [lastUpdate, setLastUpdate] = useState(new Date());
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const isRefreshingRef = React.useRef(false);
+  const refreshFromSupabase = React.useCallback(async () => {
+    if (isRefreshingRef.current) return;
+    isRefreshingRef.current = true;
+    setIsRefreshing(true);
+
+    try {
+      const [brands, products] = await Promise.all([
+        fetchBrands().catch(() => []),
+        fetchProducts().catch(() => []),
+      ]);
+
+      const normalizedBrands = (brands || []).map((brand) => ({
+        id: brand?.id ?? null,
+        name: brand?.name ?? '',
+        description: brand?.description ?? '',
+        logo: brand?.logo ?? '',
+        userId: brand?.userId ?? brand?.user_id ?? null,
+      }));
+      dispatch({ type: ACTIONS.SET_BRANDS, payload: normalizedBrands });
+
+      const normalizedProducts = (products || []).map((product) => ({
+        id: product?.id ?? null,
+        name: product?.name ?? '',
+        description: product?.description ?? '',
+        category: product?.category ?? 'general',
+        brandId: product?.brandId ?? product?.brand_id ?? '',
+        price: Number(product?.price ?? 0),
+        image: product?.image ?? '',
+        stock_quantity: Number(product?.stockQuantity ?? product?.stock_quantity ?? 0),
+        min_stock: Number(product?.minStock ?? product?.min_stock ?? 0),
+        userId: product?.userId ?? product?.user_id ?? null,
+      }));
+      dispatch({ type: ACTIONS.SET_PRODUCTS, payload: normalizedProducts });
+
+      setLastUpdate(new Date());
+    } catch (error) {
+      console.error('¿ Error al actualizar catálogo:', error);
+    } finally {
+      isRefreshingRef.current = false;
+      setIsRefreshing(false);
+    }
+  }, [dispatch, ACTIONS]);
   
   // Estados para el sistema de ventas
   const [showCart, setShowCart] = useState(false);
@@ -37,30 +81,35 @@ function Catalog() {
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [saleData, setSaleData] = useState(null);
   
-  // Detectar si el usuario es administrador/vendedor
-  const userRole = state.user && (state.user.role || (state.user.user_metadata && state.user.user_metadata.role));
-  const roleStr = (userRole ? String(userRole) : '').toLowerCase();
-  const emailStr = state.user && state.user.email ? String(state.user.email).toLowerCase() : '';
-  const isEmployee = (emailStr === 'nacho_g88@hotmail.com') || (!!roleStr && ['empleado','employee'].some(r => roleStr.includes(r)));
-  const isAdmin = !!emailStr && !isEmployee;
+  // Detectar el rol del usuario para ajustar permisos en la interfaz
+  const userRole = (state.user?.role ?? '').toLowerCase();
+  const isAdmin = ['admin', 'manager'].includes(userRole);
+  const isEmployee = ['empleado', 'employee'].includes(userRole);
   
   useEffect(() => {
-    // si hay filtros guardados restrictivos, reseteamos para mostrar resultados
     if (state.catalog.brandId && state.catalog.brandId !== 'all') setBrandId('all');
     if (state.catalog.category && state.catalog.category !== 'all') setCategory('all');
     if (state.catalog.query) setQuery('');
-    
-    // Actualizar datos automáticamente al cargar el catálogo
+
     refreshFromSupabase();
-    
-    // Configurar actualización automática cada 30 segundos
+
     const interval = setInterval(() => {
       refreshFromSupabase();
     }, 30000);
-    
+
     return () => clearInterval(interval);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [refreshFromSupabase]);
+  useEffect(() => {
+    const handler = () => refreshFromSupabase();
+    try {
+      window.addEventListener('catalog:refresh', handler);
+    } catch (_error) {}
+    return () => {
+      try {
+        window.removeEventListener('catalog:refresh', handler);
+      } catch (_error) {}
+    };
+  }, [refreshFromSupabase]);
 
   const products = useMemo(() => {
     let list = state.products;
@@ -73,179 +122,7 @@ function Catalog() {
   function saveFilters() {
     dispatch({ type: ACTIONS.SET_CATALOG_FILTERS, payload: { query, brandId, category } });
   }
-  async function refreshFromSupabase() {
-    if (isRefreshing) return; // Evitar múltiples actualizaciones simultáneas
-    
-    setIsRefreshing(true);
-    try {
-      if (supabase && supabase.from) {
-        console.log('🔄 Iniciando actualización del catálogo...');
-        console.log('Usuario actual:', state.user);
-        console.log('¿Conexión a Supabase activa?:', !!supabase);
-        console.log('URL de Supabase:', import.meta.env.VITE_SUPABASE_URL);
-        console.log('¿Tiene clave anónima?:', !!import.meta.env.VITE_SUPABASE_ANON_KEY);
-        
-        // Prueba de conexión directa
-        try {
-          const { data: testData, error: testError } = await supabase
-            .from('brands')
-            .select('count')
-            .limit(1);
-          console.log('🧪 Prueba de conexión directa:', { testData, testError });
-        } catch (testErr) {
-          console.log('❌ Error en prueba de conexión:', testErr);
-        }
-        
-        // Actualizar marcas - SOLUCIÓN TEMPORAL: deshabilitar RLS
-        console.log('🔑 Usuario identificado como administrador, intentando consulta sin RLS...');
-        
-        // Intentar múltiples métodos para obtener todas las marcas
-        let brands = null;
-        let brandsError = null;
-        
-        try {
-          // Método 1: Consulta normal
-          const result1 = await supabase.from('brands').select('*');
-          brands = result1.data;
-          brandsError = result1.error;
-          
-          if (brandsError || !brands || brands.length === 0) {
-            console.log('⚠️ Consulta normal falló, intentando con RPC...');
-            
-            // Método 2: Intentar RPC
-            try {
-              const result2 = await supabase.rpc('get_all_brands_admin');
-              if (result2.data) {
-                brands = result2.data;
-                brandsError = null;
-              }
-            } catch (rpcError) {
-              console.log('⚠️ RPC no disponible:', rpcError);
-            }
-            
-            // Método 3: Consulta directa con SQL (si es posible)
-            if (!brands || brands.length === 0) {
-              console.log('⚠️ Intentando consulta SQL directa...');
-              try {
-                const { data: sqlResult } = await supabase
-                  .from('brands')
-                  .select('*')
-                  .limit(100); // Limitar para evitar problemas
-                brands = sqlResult;
-                brandsError = null;
-              } catch (sqlError) {
-                console.log('❌ Error en consulta SQL:', sqlError);
-              }
-            }
-          }
-        } catch (error) {
-          console.log('❌ Error general en consulta de marcas:', error);
-          brandsError = error;
-        }
-          
-        console.log('📊 Resultado consulta marcas:', { 
-          brands: brands, 
-          error: brandsError,
-          count: brands ? brands.length : 0
-        });
-        
-        if (!brandsError && Array.isArray(brands)) {
-          const mappedBrands = brands.map(x => ({ 
-            id: x.id, 
-            name: x.name, 
-            description: x.description || '', 
-            logo: x.logo || '',
-            user_id: x.user_id // Incluir user_id para debugging
-          }));
-          dispatch({ type: ACTIONS.SET_BRANDS, payload: mappedBrands });
-          console.log('✅ Marcas mapeadas correctamente:', mappedBrands);
-        } else if (brandsError) {
-          console.error('❌ Error al obtener marcas:', brandsError);
-        }
-        
-        // Actualizar productos - SOLUCIÓN TEMPORAL: múltiples métodos
-        console.log('🔑 Intentando obtener todos los productos...');
-        
-        let products = null;
-        let productsError = null;
-        
-        try {
-          // Método 1: Consulta normal
-          const result1 = await supabase.from('products').select('*');
-          products = result1.data;
-          productsError = result1.error;
-          
-          if (productsError || !products || products.length === 0) {
-            console.log('⚠️ Consulta normal de productos falló, intentando alternativas...');
-            
-            // Método 2: Intentar RPC
-            try {
-              const result2 = await supabase.rpc('get_all_products_admin');
-              if (result2.data) {
-                products = result2.data;
-                productsError = null;
-              }
-            } catch (rpcError) {
-              console.log('⚠️ RPC de productos no disponible:', rpcError);
-            }
-            
-            // Método 3: Consulta directa con SQL
-            if (!products || products.length === 0) {
-              console.log('⚠️ Intentando consulta SQL directa de productos...');
-              try {
-                const { data: sqlResult } = await supabase
-                  .from('products')
-                  .select('*')
-                  .limit(100);
-                products = sqlResult;
-                productsError = null;
-              } catch (sqlError) {
-                console.log('❌ Error en consulta SQL de productos:', sqlError);
-              }
-            }
-          }
-        } catch (error) {
-          console.log('❌ Error general en consulta de productos:', error);
-          productsError = error;
-        }
-          
-        console.log('📦 Resultado consulta productos:', { 
-          products: products, 
-          error: productsError,
-          count: products ? products.length : 0
-        });
-        
-        if (!productsError && Array.isArray(products)) {
-          const mappedProducts = products.map(x => ({ 
-            id: x.id, 
-            name: x.name, 
-            description: x.description || '', 
-            category: x.category || 'general', 
-            brandId: x.brand_id, // Usar brand_id de Supabase
-            price: Number(x.price || 0), 
-            image: x.image || '',
-            stock_quantity: Number(x.stock_quantity || 0),
-            min_stock: Number(x.min_stock || 0),
-            user_id: x.user_id // Incluir user_id para debugging
-          }));
-          dispatch({ type: ACTIONS.SET_PRODUCTS, payload: mappedProducts });
-          console.log('✅ Productos mapeados correctamente:', mappedProducts);
-        } else if (productsError) {
-          console.error('❌ Error al obtener productos:', productsError);
-        }
-        
-        setLastUpdate(new Date());
-        console.log('✅ Catálogo actualizado desde Supabase:', { 
-          brands: (brands && brands.length) || 0, 
-          products: (products && products.length) || 0 
-        });
-      }
-    } catch (error) {
-      console.error('❌ Error al actualizar catálogo:', error);
-    } finally {
-      setIsRefreshing(false);
-    }
-  }
+
 
   const brandName = id => {
     const found = state.brands.find(b => b.id === id);
@@ -297,134 +174,112 @@ function Catalog() {
   useEffect(() => {
     (async () => {
       try {
-        if (!supabase || !supabase.from || cart.length === 0) { setCartWarnings({}); return; }
-        const ids = cart.map(i => i.id);
-        const { data, error } = await supabase.from('products').select('id, stock_quantity, min_stock').in('id', ids);
-        if (error) return;
-        const m = new Map(); data.forEach(r => m.set(r.id, r));
+        if (cart.length === 0) { setCartWarnings({}); return; }
+        const ids = cart.map((item) => item.id);
+        const records = await fetchProductsByIds(ids);
+        const stockMap = new Map((records || []).map((row) => [row.id, row]));
         const warnings = {};
-        for (const it of cart) {
-          const row = m.get(it.id);
-          const current = row ? Number(row.stock_quantity || 0) : 0;
-          const minStock = row ? Number(row.min_stock || 0) : 0;
-          const remaining = current - Number(it.quantity || 1);
-          if (Number(it.quantity || 1) > current) warnings[it.id] = 'sin_stock';
-          else if (remaining < minStock) warnings[it.id] = 'bajo_minimo';
+        for (const item of cart) {
+          const row = stockMap.get(item.id);
+          const current = row ? Number(row.stockQuantity ?? row.stock_quantity ?? 0) : 0;
+          const minStock = row ? Number(row.minStock ?? row.min_stock ?? 0) : 0;
+          const quantity = Number(item.quantity || 1);
+          const remaining = current - quantity;
+          if (quantity > current) warnings[item.id] = 'sin_stock';
+          else if (remaining < minStock) warnings[item.id] = 'bajo_minimo';
         }
         setCartWarnings(warnings);
-      } catch (_e) {}
+      } catch (_e) {
+        setCartWarnings({});
+      }
     })();
-  }, [cart, supabase]);
+  }, [cart]);
 
   const processSale = async () => {
     if (cart.length === 0) return;
-    
+    if (!state.user || !state.user.id) {
+      alert('Debe iniciar sesión para registrar ventas.');
+      return;
+    }
+
     try {
-      // 0) Validación de stock y min_stock
-      if (supabase && supabase.from && cart.length > 0) {
-        const productIds = cart.map(i => i.id);
-        const { data: stockRows, error: stockError } = await supabase
-          .from('products')
-          .select('id, stock_quantity, min_stock, name')
-          .in('id', productIds);
-        if (stockError) throw stockError;
+      const productIds = cart.map((item) => item.id);
+      const products = await fetchProductsByIds(productIds);
+      const stockMap = new Map((products || []).map((p) => [p.id, p]));
 
-        const stockById = new Map();
-        (stockRows || []).forEach(r => stockById.set(r.id, r));
-
-        for (const item of cart) {
-          const row = stockById.get(item.id);
-          if (!row) {
-            alert(`No se pudo validar stock para el producto ${item.name}.`);
-            return;
-          }
-          const current = Number(row.stock_quantity || 0);
-          const minStock = Number(row.min_stock || 0);
-          const remaining = current - Number(item.quantity || 1);
-          if (Number(item.quantity || 1) > current) {
-            alert(`Stock insuficiente para ${item.name}. Disponible: ${current}`);
-            return;
-          }
-          if (remaining < minStock) {
-            alert(`No se puede realizar la venta de ${item.name}. El stock quedaría por debajo del mínimo (${minStock}).`);
-            return;
-          }
+      for (const item of cart) {
+        const record = stockMap.get(item.id);
+        const current = record ? Number(record.stockQuantity ?? record.stock_quantity ?? 0) : 0;
+        const minStock = record ? Number(record.minStock ?? record.min_stock ?? 0) : 0;
+        const quantity = Number(item.quantity || 1);
+        const remaining = current - quantity;
+        if (quantity > current) {
+          alert(`Stock insuficiente para ${item.name}. Disponible: ${current}`);
+          return;
+        }
+        if (remaining < minStock) {
+          alert(`No se puede realizar la venta de ${item.name}. El stock quedaría por debajo del mínimo (${minStock}).`);
+          return;
         }
       }
 
-      // 1) Insertar venta en Supabase
       const totalAmount = getCartTotal();
       const notes = { paymentMethod, customerData };
-      let insertedSale = null;
-
-      if (supabase && supabase.from) {
-        // Generar id de venta en cliente para evitar SELECT y cumplir con policies
-        const saleId = (window.crypto && window.crypto.randomUUID) ? window.crypto.randomUUID() : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
-        const payload = {
-          id: saleId,
-          employee_id: (state.user && state.user.id) ? state.user.id : null,
-          total_amount: Number(totalAmount),
-          sale_date: new Date().toISOString(),
-          notes: JSON.stringify(notes)
-        };
-        const { error } = await supabase.from('sales').insert(payload, { returning: 'minimal' });
-        if (error) throw error;
-        insertedSale = { id: saleId, sale_date: payload.sale_date };
-
-        // 2) Insertar ítems de la venta
-        const itemsPayload = cart.map(item => ({
-          sale_id: insertedSale.id,
-          product_id: item.id,
+      const salePayload = {
+        employeeId: state.user.id,
+        items: cart.map((item) => ({
+          productId: item.id,
           quantity: Number(item.quantity || 1),
-          unit_price: Number(item.price || 0),
-          subtotal: Number((item.price || 0) * (item.quantity || 1))
-        }));
-        const { error: itemsError } = await supabase.from('sale_items').insert(itemsPayload, { returning: 'minimal' });
-        if (itemsError) throw itemsError;
+          unitPrice: Number(item.price || 0),
+        })),
+        totalAmount: Number(totalAmount),
+        saleDate: new Date().toISOString(),
+        notes: JSON.stringify(notes),
+      };
 
-        // 3) Descontar stock por cada ítem
-        // Se realiza actualización por producto para mantener claridad
-        const { data: stockRows2 } = await supabase
-          .from('products')
-          .select('id, stock_quantity')
-          .in('id', cart.map(i => i.id));
-        const stockMap2 = new Map();
-        (stockRows2 || []).forEach(r => stockMap2.set(r.id, Number(r.stock_quantity || 0)));
+      const saleResult = await createSale(salePayload);
 
-        for (const item of cart) {
-          const current = stockMap2.has(item.id) ? stockMap2.get(item.id) : 0;
-          const newStock = current - Number(item.quantity || 1);
-          await supabase.from('products').update({ stock_quantity: newStock }).eq('id', item.id);
-        }
-      }
+      await Promise.all(cart.map(async (item) => {
+        const record = stockMap.get(item.id);
+        const current = record ? Number(record.stockQuantity ?? record.stock_quantity ?? 0) : 0;
+        const quantity = Number(item.quantity || 1);
+        const remaining = current - quantity;
+        const minStock = Math.floor(remaining * 0.3);
+        const updated = await updateProductStock(item.id, remaining, minStock);
+        const stateProduct = {
+          id: updated?.id ?? item.id,
+          name: updated?.name ?? item.name,
+          description: updated?.description ?? item.description ?? "",
+          category: updated?.category ?? item.category ?? "general",
+          brandId: updated?.brandId ?? updated?.brand_id ?? item.brandId ?? "",
+          price: Number(updated?.price ?? item.price ?? 0),
+          image: updated?.image ?? item.image ?? "",
+          stock_quantity: Number(updated?.stockQuantity ?? updated?.stock_quantity ?? remaining),
+          min_stock: Number(updated?.minStock ?? updated?.min_stock ?? minStock),
+          userId: updated?.userId ?? updated?.user_id ?? null,
+        };
+        dispatch({ type: ACTIONS.UPSERT_PRODUCT, payload: stateProduct });
+      }));
 
-      // 3) Preparar datos para el modal usando el ID real
-      const sale = {
-        id: insertedSale ? insertedSale.id : Date.now(),
+      const saleForModal = {
+        id: saleResult?.id ?? Date.now(),
         items: cart,
         total: totalAmount,
         paymentMethod,
         customerData,
-        date: insertedSale && insertedSale.sale_date ? new Date(insertedSale.sale_date) : new Date(),
-        seller: (state.user && state.user.email) || 'Usuario'
+        date: saleResult?.saleDate ? new Date(saleResult.saleDate) : new Date(),
+        seller: (state.user && state.user.email) || "Usuario",
       };
 
-      setSaleData(sale);
+      setSaleData(saleForModal);
       setShowSuccessModal(true);
       setShowCheckout(false);
 
-      // Notificar al panel de Admin para refrescar ventas, si está abierto
-      try {
-        if (dispatch && ACTIONS && ACTIONS.EMIT_EVENT) {
-          dispatch({ type: ACTIONS.EMIT_EVENT, payload: { name: 'sales:refresh' } });
-        }
-        // Fallback: emitir evento del navegador que Admin puede escuchar
-        window.dispatchEvent(new CustomEvent('sales:refresh'));
-      } catch (_e) {}
-      
+      window.dispatchEvent(new Event("sales:refresh"));
+
+      clearCart();
     } catch (error) {
-      console.error('Error procesando venta:', error);
-      alert('Error al procesar la venta en la base de datos');
+      console.error('¿ Error al procesar la venta:', error);
     }
   };
 
