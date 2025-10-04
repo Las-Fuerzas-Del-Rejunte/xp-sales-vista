@@ -369,7 +369,6 @@ export const AllPrograms = [
     items: [
       { type: 'item', icon: shopIcon, text: 'Catálogo' },
       { type: 'item', icon: adminIcon, text: 'Admin' },
-      { type: 'item', icon: userIcon, text: 'Auth' },
     ],
   },
   {

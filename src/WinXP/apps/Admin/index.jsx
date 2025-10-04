@@ -833,6 +833,14 @@ function Admin({ defaultTab = 'products', showLauncher = false, openCatalog }) {
                     </button>
                   </div>
                 )}
+                {tab === 'products' && (
+                  <div className="com__content__left__card__row">
+                    <button style={btn()} onClick={showNewBrandForm ? clearBrandForm : showNewBrand}>
+                      <img src={edit} alt="" style={{ width: '16px', height: '16px', marginRight: '4px' }} />
+                      {showNewBrandForm ? 'Ocultar formulario' : 'Nueva marca'}
+                    </button>
+                  </div>
+                )}
 
     {/* Confirm dialog estilo Windows XP */}
     {confirmDialog.open && (
@@ -1135,11 +1143,11 @@ function Admin({ defaultTab = 'products', showLauncher = false, openCatalog }) {
       )}
 
       {tab === 'products' && (
-        <div style={{ display: 'grid', gridTemplateColumns: (pId || showNewProductForm) && !isNarrow ? '2fr 1fr' : '1fr', gap: 12, flex: 1 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: (pId || showNewProductForm || showNewBrandForm) && !isNarrow ? '2fr 1fr' : '1fr', gap: 12, flex: 1 }}>
           <div style={{ overflow: 'auto' }}>
             <div style={groupHeader()}>Productos</div>
             <div style={groupBody()}>
-            <div style={{ display: 'grid', gridTemplateColumns: (pId || showNewProductForm) && !isNarrow ? 'repeat(auto-fill,minmax(240px,1fr))' : 'repeat(auto-fill,minmax(220px,1fr))', gap: 12 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: (pId || showNewProductForm || showNewBrandForm) && !isNarrow ? 'repeat(auto-fill,minmax(240px,1fr))' : 'repeat(auto-fill,minmax(220px,1fr))', gap: 12 }}>
               {filteredProducts.map(p => (
                 <div key={p.id} style={{ 
                   border: '1px solid #b0c4ff', 
@@ -1686,6 +1694,191 @@ function Admin({ defaultTab = 'products', showLauncher = false, openCatalog }) {
             </div>
           </div>
           )}
+          {showNewBrandForm && (
+          <div style={{ overflow: 'auto' }}>
+              <div style={groupHeader()}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span>Nueva marca</span>
+                  <button 
+                    onClick={() => { setShowNewBrandForm(false); }}
+                    style={{ padding: '4px 8px', background: 'linear-gradient(to bottom, #f0f0f0 0%, #d0d0d0 100%)', border: '1px solid #999', fontSize: 11, cursor: 'pointer' }}
+                  >Ocultar</button>
+                </div>
+              </div>
+              <div style={{
+                padding: 12,
+                background: '#f0f0f0',
+                border: '1px inset #f0f0f0',
+                marginBottom: 8,
+                boxShadow: 'inset 0 1px 0 #fff, 0 1px 0 #999'
+              }}>
+                <div style={{ 
+                  fontSize: '11px', 
+                  fontWeight: 'bold', 
+                  color: '#000',
+                  marginBottom: 6,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 4
+                }}>🏢 Datos de la marca</div>
+                <Field label="Nombre">
+                  <input 
+                    value={bName} 
+                    onChange={e => setBName(e.target.value)}
+                    placeholder="Ingrese el nombre de la marca..."
+                    style={{
+                      width: '100%',
+                      padding: '4px 6px',
+                      border: '1px solid #999',
+                      fontSize: '11px',
+                      background: '#fff',
+                      fontFamily: 'Tahoma, Arial, sans-serif',
+                      boxShadow: 'inset 0 1px 0 #fff, 0 1px 0 #999'
+                    }}
+                    onFocus={(e) => e.target.style.border = '1px solid #4a90e2'}
+                    onBlur={(e) => e.target.style.border = '1px solid #999'}
+                  />
+                </Field>
+                <Field label="Descripción">
+                  <textarea 
+                    value={bDesc} 
+                    onChange={e => setBDesc(e.target.value)}
+                    placeholder="Breve descripción..."
+                    rows="3"
+                    style={{
+                      width: '100%',
+                      padding: '4px 6px',
+                      border: '1px solid #999',
+                      fontSize: '11px',
+                      background: '#fff',
+                      fontFamily: 'Tahoma, Arial, sans-serif',
+                      resize: 'vertical',
+                      boxShadow: 'inset 0 1px 0 #fff, 0 1px 0 #999'
+                    }}
+                    onFocus={(e) => e.target.style.border = '1px solid #4a90e2'}
+                    onBlur={(e) => e.target.style.border = '1px solid #999'}
+                  />
+                </Field>
+                <Field label="Logo URL">
+                  <input 
+                    value={bLogo} 
+                    onChange={e => setBLogo(e.target.value)}
+                    placeholder="URL del logo..."
+                    style={{
+                      width: '100%',
+                      padding: '4px 6px',
+                      border: '1px solid #999',
+                      fontSize: '11px',
+                      background: '#fff',
+                      fontFamily: 'Tahoma, Arial, sans-serif',
+                      boxShadow: 'inset 0 1px 0 #fff, 0 1px 0 #999'
+                    }}
+                    onFocus={(e) => e.target.style.border = '1px solid #4a90e2'}
+                    onBlur={(e) => e.target.style.border = '1px solid #999'}
+                  />
+                </Field>
+                
+                {/* Vista previa del logo */}
+                {bLogo && (
+                  <div style={{ 
+                    marginBottom: 8,
+                    textAlign: 'center',
+                    background: '#fff',
+                    border: '1px solid #999',
+                    padding: 6,
+                    boxShadow: 'inset 0 1px 0 #fff, 0 1px 0 #999'
+                  }}>
+                    <div style={{ fontSize: 10, color: '#666', marginBottom: 4 }}>Vista previa:</div>
+                    <img alt="logo" src={bLogo} style={{ maxWidth: 140, height: 'auto' }} />
+                  </div>
+                )}
+                
+                <div style={{ 
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(2, 1fr)',
+                  gap: '8px',
+                  justifyContent: 'center',
+                  justifyItems: 'center',
+                  width: '100%',
+                  boxSizing: 'border-box',
+                  marginTop: '12px'
+                }}>
+                  <button 
+                    style={{
+                      padding: '6px 12px',
+                      background: isBrandDirty ? 'linear-gradient(to bottom, #4CAF50 0%, #45a049 100%)' : 'linear-gradient(to bottom, #f0f0f0 0%, #d0d0d0 100%)',
+                      border: isBrandDirty ? '1px solid #2e7d32' : '1px solid #999',
+                      color: isBrandDirty ? '#fff' : '#000',
+                      fontSize: '11px',
+                      fontWeight: 'bold',
+                      cursor: isBrandDirty ? 'pointer' : 'not-allowed',
+                      opacity: isBrandDirty ? 1 : 0.6,
+                      fontFamily: 'Tahoma, Arial, sans-serif',
+                      boxShadow: isBrandDirty ? 'inset 0 1px 0 #fff, 0 1px 2px rgba(0,0,0,0.1)' : 'inset 0 1px 0 #fff, 0 1px 0 #999',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '4px'
+                    }}
+                    disabled={!isBrandDirty} 
+                    onClick={saveBrand}
+                    onMouseDown={(e) => {
+                      if (isBrandDirty) {
+                        e.target.style.background = 'linear-gradient(to bottom, #45a049 0%, #3d8b40 100%)';
+                        e.target.style.boxShadow = 'inset 0 1px 0 #2e7d32, 0 1px 2px rgba(0,0,0,0.1)';
+                      }
+                    }}
+                    onMouseUp={(e) => {
+                      if (isBrandDirty) {
+                        e.target.style.background = 'linear-gradient(to bottom, #4CAF50 0%, #45a049 100%)';
+                        e.target.style.boxShadow = 'inset 0 1px 0 #fff, 0 1px 2px rgba(0,0,0,0.1)';
+                      }
+                    }}
+                    onMouseLeave={(e) => {
+                      if (isBrandDirty) {
+                        e.target.style.background = 'linear-gradient(to bottom, #4CAF50 0%, #45a049 100%)';
+                        e.target.style.boxShadow = 'inset 0 1px 0 #fff, 0 1px 2px rgba(0,0,0,0.1)';
+                      }
+                    }}
+                  >
+                    <span>💾</span>
+                    {bId ? 'Guardar cambios' : 'Crear marca'}
+                  </button>
+                  <button 
+                    style={{
+                      padding: '6px 12px',
+                      background: 'linear-gradient(to bottom, #f0f0f0 0%, #d0d0d0 100%)',
+                      border: '1px solid #999',
+                      color: '#000',
+                      fontSize: '11px',
+                      fontWeight: 'bold',
+                      cursor: 'pointer',
+                      fontFamily: 'Tahoma, Arial, sans-serif',
+                      boxShadow: 'inset 0 1px 0 #fff, 0 1px 0 #999',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '4px'
+                    }}
+                    onClick={clearBrandForm}
+                    onMouseDown={(e) => {
+                      e.target.style.background = 'linear-gradient(to bottom, #d0d0d0 0%, #f0f0f0 100%)';
+                      e.target.style.boxShadow = 'inset 0 1px 0 #999, 0 1px 0 #fff';
+                    }}
+                    onMouseUp={(e) => {
+                      e.target.style.background = 'linear-gradient(to bottom, #f0f0f0 0%, #d0d0d0 100%)';
+                      e.target.style.boxShadow = 'inset 0 1px 0 #fff, 0 1px 0 #999';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.target.style.background = 'linear-gradient(to bottom, #f0f0f0 0%, #d0d0d0 100%)';
+                      e.target.style.boxShadow = 'inset 0 1px 0 #fff, 0 1px 0 #999';
+                    }}
+                  >
+                    <span>🗑️</span>
+                    Limpiar
+                  </button>
+                </div>
+              </div>
+          </div>
+          )}
         </div>
       )}
 
@@ -1693,8 +1886,8 @@ function Admin({ defaultTab = 'products', showLauncher = false, openCatalog }) {
         <div style={{ display: 'grid', gridTemplateColumns: (bId || showNewBrandForm) ? '2fr 1fr' : '1fr', gap: 12, flex: 1 }}>
           <div style={{ overflow: 'auto' }}>
             <div style={groupHeader()}>Marcas</div>
-            <div style={groupBody()}>
-            <div style={{ display: 'grid', gridTemplateColumns: (bId || showNewBrandForm) ? 'repeat(auto-fill,minmax(240px,1fr))' : 'repeat(auto-fill,minmax(280px,1fr))', gap: 12 }}>
+              <div style={groupBody()}>
+              <div style={{ display: 'grid', gridTemplateColumns: (bId || showNewBrandForm) ? 'repeat(auto-fill,minmax(240px,1fr))' : 'repeat(auto-fill,minmax(280px,1fr))', gap: 12 }}>
               {filteredBrands.map(b => (
                 <div key={b.id} style={{ 
                   border: '1px solid #b0c4ff', 

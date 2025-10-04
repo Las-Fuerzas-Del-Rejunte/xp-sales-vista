@@ -280,8 +280,6 @@ function WinXP() {
       dispatch({ type: ADD_APP, payload: appSettings.Winamp });
     else if (o === 'Paint')
       dispatch({ type: ADD_APP, payload: appSettings.Paint });
-    else if (o === 'Auth')
-      dispatch({ type: ADD_APP, payload: appSettings.Auth });
     else if (o === 'Catálogo')
       dispatch({ type: ADD_APP, payload: appSettings['Catálogo'] });
     else if (o === 'Admin')

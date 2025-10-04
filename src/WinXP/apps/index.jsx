@@ -4,7 +4,6 @@ import ErrorBox from './ErrorBox';
 import MyComputer from './MyComputer';
 import Notepad from './Notepad';
 import Winamp from './Winamp';
-import Auth from './Auth';
 import Catalog from './Catalog';
 import Admin from './Admin';
 import Paint from './Paint';
@@ -158,15 +157,6 @@ export const defaultIconState = [
     position: { x: 190, y: 320 },
     iconSize: 48,
   },
-  {
-    id: 8,
-    icon: userIcon,
-    title: 'Auth',
-    component: Auth,
-    isFocus: false,
-    position: { x: 190, y: 430 },
-    iconSize: 48,
-  },
 ];
 
 export const appSettings = {
@@ -302,19 +292,6 @@ export const appSettings = {
     minimized: false,
     maximized: window.innerWidth < 800,
     multiInstance: true,
-  },
-  Auth: {
-    header: {
-      icon: userIcon,
-      title: 'Autenticación',
-    },
-    component: Auth,
-    defaultSize: { width: 420, height: 0 },
-    defaultOffset: { x: 300, y: 100 },
-    resizable: true,
-    minimized: false,
-    maximized: false,
-    multiInstance: false,
   },
   Ventas: {
     header: {
