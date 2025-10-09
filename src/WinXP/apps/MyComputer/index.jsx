@@ -1,6 +1,5 @@
 import React from 'react';
 import styled from 'styled-components';
-import ga from 'react-ga';
 
 import { WindowDropDowns } from 'components';
 import dropDownData from './dropDownData';
@@ -15,7 +14,6 @@ import remove from 'assets/windowsIcons/302(16x16).png';
 import control from 'assets/windowsIcons/300(16x16).png';
 import network from 'assets/windowsIcons/693(16x16).png';
 import document from 'assets/windowsIcons/308(16x16).png';
-import adminIcon from 'assets/windowsIcons/227(16x16).png';
 import folderSmall from 'assets/windowsIcons/318(16x16).png';
 import menu from 'assets/windowsIcons/358(32x32).png';
 import folder from 'assets/windowsIcons/318(48x48).png';
@@ -28,10 +26,7 @@ import logo from 'assets/github-logo.png';
 import mine from 'assets/minesweeper/mine-icon.png';
 import windows from 'assets/windowsIcons/windows.png';
 
-import { useAppState } from 'state/AppStateContext';
-
-function MyComputer({ onClose, openAdmin }) {
-  const { state: appState } = useAppState();
+function MyComputer({ onClose }) {
   function onClickOptionItem(item) {
     switch (item) {
       case 'Close':
@@ -54,7 +49,7 @@ function MyComputer({ onClose, openAdmin }) {
       <section className="com__function_bar">
         <div className="com__function_bar__button--disable">
           <img className="com__function_bar__icon" src={back} alt="" />
-          <span className="com__function_bar__text">Atrás</span>
+          <span className="com__function_bar__text">Back</span>
           <div className="com__function_bar__arrow" />
         </div>
         <div className="com__function_bar__button--disable">
@@ -71,7 +66,7 @@ function MyComputer({ onClose, openAdmin }) {
             src={search}
             alt=""
           />
-          <span className="com__function_bar__text">Buscar</span>
+          <span className="com__function_bar__text">Search</span>
         </div>
         <div className="com__function_bar__button">
           <img
@@ -79,7 +74,7 @@ function MyComputer({ onClose, openAdmin }) {
             src={folderOpen}
             alt=""
           />
-          <span className="com__function_bar__text">Carpetas</span>
+          <span className="com__function_bar__text">Folders</span>
         </div>
         <div className="com__function_bar__separate" />
         <div className="com__function_bar__button">
@@ -92,14 +87,14 @@ function MyComputer({ onClose, openAdmin }) {
         </div>
       </section>
       <section className="com__address_bar">
-        <div className="com__address_bar__title">Dirección</div>
+        <div className="com__address_bar__title">Address</div>
         <div className="com__address_bar__content">
           <img
             src={computer}
             alt="ie"
             className="com__address_bar__content__img"
           />
-          <div className="com__address_bar__content__text">Mi PC</div>
+          <div className="com__address_bar__content__text">My Computer</div>
           <img
             src={dropdown}
             alt="dropdown"
@@ -108,7 +103,7 @@ function MyComputer({ onClose, openAdmin }) {
         </div>
         <div className="com__address_bar__go">
           <img className="com__address_bar__go__img" src={go} alt="go" />
-          <span className="com__address_bar__go__text">Ir</span>
+          <span className="com__address_bar__go__text">Go</span>
         </div>
       </section>
       <div className="com__content">
@@ -117,7 +112,7 @@ function MyComputer({ onClose, openAdmin }) {
             <div className="com__content__left__card">
               <div className="com__content__left__card__header">
                 <div className="com__content__left__card__header__text">
-                  Tareas del sistema
+                  System Tasks
                 </div>
                 <img
                   src={pullup}
@@ -133,7 +128,7 @@ function MyComputer({ onClose, openAdmin }) {
                     alt="view"
                   />
                   <div className="com__content__left__card__text link">
-                    Ver información del sistema
+                    View system information
                   </div>
                 </div>
                 <div className="com__content__left__card__row">
@@ -143,7 +138,7 @@ function MyComputer({ onClose, openAdmin }) {
                     alt="remove"
                   />
                   <div className="com__content__left__card__text link">
-                    Agregar o quitar programas
+                    Add or remove programs
                   </div>
                 </div>
                 <div className="com__content__left__card__row">
@@ -153,7 +148,7 @@ function MyComputer({ onClose, openAdmin }) {
                     alt="control"
                   />
                   <div className="com__content__left__card__text link">
-                    Cambiar una configuración
+                    Change a setting
                   </div>
                 </div>
               </div>
@@ -161,7 +156,7 @@ function MyComputer({ onClose, openAdmin }) {
             <div className="com__content__left__card">
               <div className="com__content__left__card__header">
                 <div className="com__content__left__card__header__text">
-                  Otros lugares
+                  Other Places
                 </div>
                 <img
                   src={pullup}
@@ -177,7 +172,7 @@ function MyComputer({ onClose, openAdmin }) {
                     alt="network"
                   />
                   <div className="com__content__left__card__text link">
-                    Mis sitios de red
+                    My Network Places
                   </div>
                 </div>
                 <div className="com__content__left__card__row">
@@ -187,7 +182,7 @@ function MyComputer({ onClose, openAdmin }) {
                     alt="document"
                   />
                   <div className="com__content__left__card__text link">
-                    Mis documentos
+                    My Documents
                   </div>
                 </div>
                 <div className="com__content__left__card__row">
@@ -197,7 +192,7 @@ function MyComputer({ onClose, openAdmin }) {
                     alt="folder"
                   />
                   <div className="com__content__left__card__text link">
-                    Documentos compartidos
+                    Shared Documents
                   </div>
                 </div>
                 <div className="com__content__left__card__row">
@@ -207,7 +202,7 @@ function MyComputer({ onClose, openAdmin }) {
                     alt="control"
                   />
                   <div className="com__content__left__card__text link">
-                    Panel de control
+                    Control Panel
                   </div>
                 </div>
               </div>
@@ -215,7 +210,7 @@ function MyComputer({ onClose, openAdmin }) {
             <div className="com__content__left__card">
               <div className="com__content__left__card__header">
                 <div className="com__content__left__card__header__text">
-                  Detalles
+                  Details
                 </div>
                 <img
                   src={pullup}
@@ -241,29 +236,14 @@ function MyComputer({ onClose, openAdmin }) {
                     src="https://cdn.iconscout.com/icon/free/png-256/medium-1425876-1205067.png"
                     alt="control"
                   />
-                  <ga.OutboundLink
-                    eventLabel="https://medium.com/@ShizukuIchi"
-                    to="https://medium.com/@ShizukuIchi"
-                    className="com__content__left__card__text link"
+                  <a
+                    href="https://medium.com/@ShizukuIchi"
                     target="_blank"
+                    rel="noreferrer"
+                    className="com__content__left__card__text link"
                   >
                     Medium
-                  </ga.OutboundLink>
-                </div>
-                <div className="com__content__left__card__row">
-                  <img
-                    className="com__content__left__card__img"
-                    src="https://image.flaticon.com/icons/png/128/179/179312.png"
-                    alt="control"
-                  />
-                  <ga.OutboundLink
-                    eventLabel="https://sh1zuku.csie.io/blog"
-                    to="https://sh1zuku.csie.io/blog"
-                    className="com__content__left__card__text link"
-                    target="_blank"
-                  >
-                    Blog
-                  </ga.OutboundLink>
+                  </a>
                 </div>
                 <div className="com__content__left__card__row">
                   <img
@@ -271,14 +251,14 @@ function MyComputer({ onClose, openAdmin }) {
                     src={mine}
                     alt="control"
                   />
-                  <ga.OutboundLink
-                    eventLabel="https://github.com/ShizukuIchi/minesweeper"
-                    to="https://github.com/ShizukuIchi/minesweeper"
-                    className="com__content__left__card__text link"
+                  <a
+                    href="https://github.com/ShizukuIchi/minesweeper"
                     target="_blank"
+                    rel="noreferrer"
+                    className="com__content__left__card__text link"
                   >
-                    Minesweeper(mobile)
-                  </ga.OutboundLink>
+                    Minesweeper
+                  </a>
                 </div>
               </div>
             </div>
@@ -286,7 +266,7 @@ function MyComputer({ onClose, openAdmin }) {
           <div className="com__content__right">
             <div className="com__content__right__card">
               <div className="com__content__right__card__header">
-                Archivos almacenados en este equipo
+                Files Stored on This Computer
               </div>
               <div className="com__content__right__card__content">
                 <div className="com__content__right__card__item">
@@ -297,7 +277,7 @@ function MyComputer({ onClose, openAdmin }) {
                   />
                   <div className="com__content__right__card__img-container">
                     <div className="com__content__right__card__text">
-                      Documentos compartidos
+                      Shared Documents
                     </div>
                   </div>
                 </div>
@@ -309,31 +289,15 @@ function MyComputer({ onClose, openAdmin }) {
                   />
                   <div className="com__content__right__card__img-container">
                     <div className="com__content__right__card__text">
-                      Documentos del usuario
+                      User's Documents
                     </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-            <div className="com__content__right__card">
-              <div className="com__content__right__card__header">Administración</div>
-              <div className="com__content__right__card__content">
-                <div
-                  className="com__content__right__card__item link"
-                  onDoubleClick={openAdmin}
-                  title="Gestionar productos y marcas"
-                  style={{ cursor: 'pointer' }}
-                >
-                  <img src={adminIcon} alt="admin" className="com__content__right__card__img" />
-                  <div className="com__content__right__card__img-container">
-                    <div className="com__content__right__card__text">Panel de administración</div>
                   </div>
                 </div>
               </div>
             </div>
             <div className="com__content__right__card">
               <div className="com__content__right__card__header">
-                Unidades de disco duro
+                Hard Disk Drives
               </div>
               <div className="com__content__right__card__content">
                 <div className="com__content__right__card__item">
@@ -344,7 +308,7 @@ function MyComputer({ onClose, openAdmin }) {
                   />
                   <div className="com__content__right__card__img-container">
                     <div className="com__content__right__card__text">
-                      Disco local (C:)
+                      Local Disk (C:)
                     </div>
                   </div>
                 </div>
@@ -352,7 +316,7 @@ function MyComputer({ onClose, openAdmin }) {
             </div>
             <div className="com__content__right__card">
               <div className="com__content__right__card__header">
-                Dispositivos con almacenamiento extraíble
+                Devices with Removable Storage
               </div>
               <div className="com__content__right__card__content">
                 <div className="com__content__right__card__item">
@@ -364,21 +328,21 @@ function MyComputer({ onClose, openAdmin }) {
                     />
                   </div>
                   <div className="com__content__right__card__text">
-                    Unidad de CD (D:)
+                    CD Drive (D:)
                   </div>
                 </div>
               </div>
             </div>
             <div className="com__content__right__card com__content__right__card--me">
               <div className="com__content__right__card__header">
-                Acerca de mí :)
+                About Me :)
               </div>
               <div className="com__content__right__card__content">
-                <ga.OutboundLink
-                  eventLabel="https://github.com/proxy-m"
-                  to="https://github.com/proxy-m"
-                  className="com__content__right__card__item--me"
+                <a
+                  href="https://github.com/ShizukuIchi"
                   target="_blank"
+                  rel="noreferrer"
+                  className="com__content__right__card__item--me"
                 >
                   <img
                     className="com__content__right__card__img"
@@ -386,22 +350,22 @@ function MyComputer({ onClose, openAdmin }) {
                     alt="control"
                   />
                   <div className="com__content__right__card__text">Github</div>
-                </ga.OutboundLink>
-                <ga.OutboundLink
-                  eventLabel="https://vk.com/mivi_studio"
-                  to="https://vk.com/mivi_studio"
-                  className="com__content__right__card__item--me"
+                </a>
+                <a
+                  href="https://sh1zuku.csie.io"
                   target="_blank"
+                  rel="noreferrer"
+                  className="com__content__right__card__item--me"
                 >
                   <img
                     className="com__content__right__card__img"
-                    src="https://i.ibb.co/f88rHYT/mivi-studio.jpg"
+                    src="https://a.ppy.sh/2926513_1448497605.png"
                     alt="control"
                   />
                   <div className="com__content__right__card__text">
-                    Mi sitio web
+                    My Website
                   </div>
-                </ga.OutboundLink>
+                </a>
               </div>
             </div>
           </div>
