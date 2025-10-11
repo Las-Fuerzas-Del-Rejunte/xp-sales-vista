@@ -56,15 +56,44 @@ function reducer(state, action) {
     case ACTIONS.SET_PRODUCTS:
       return { ...state, products: Array.isArray(action.payload) ? action.payload : [] };
     case ACTIONS.UPSERT_BRAND: {
-      const b = action.payload;
-      const exists = state.brands.some(x => x.id === b.id || x.name.toLowerCase() === b.name.toLowerCase());
-      if (b.id) {
-        return { ...state, brands: state.brands.map(x => (x.id === b.id ? { ...x, ...b } : x)) };
+      const brand = action.payload;
+      if (!brand) return state;
+
+      const normalizedName = typeof brand.name === 'string' ? brand.name.trim() : '';
+      const normalizedNameLower = normalizedName.toLowerCase();
+      const existingById = brand.id ? state.brands.find((item) => item.id === brand.id) : null;
+
+      if (existingById) {
+        return {
+          ...state,
+          brands: state.brands.map((item) =>
+            item.id === brand.id ? { ...item, ...brand, name: normalizedName || brand.name || item.name } : item
+          ),
+        };
       }
-      if (exists) {
-        return state;
+
+      const existingByName = normalizedNameLower
+        ? state.brands.find((item) => (item.name || '').toLowerCase() === normalizedNameLower)
+        : null;
+
+      if (existingByName) {
+        return {
+          ...state,
+          brands: state.brands.map((item) =>
+            item.id === existingByName.id
+              ? { ...item, ...brand, id: existingByName.id, name: normalizedName || existingByName.name }
+              : item
+          ),
+        };
       }
-      return { ...state, brands: [...state.brands, { ...b, id: `br_${Date.now()}` }] };
+
+      const brandToInsert = {
+        ...brand,
+        id: brand.id || `br_${Date.now()}`,
+        name: normalizedName || brand.name || '',
+      };
+
+      return { ...state, brands: [...state.brands, brandToInsert] };
     }
     case ACTIONS.DELETE_BRAND: {
       const brandId = action.payload;

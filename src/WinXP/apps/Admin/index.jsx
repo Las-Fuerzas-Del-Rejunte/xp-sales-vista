@@ -21,6 +21,7 @@ import errorSound from 'assets/sounds/erro.wav';
 const PLACEHOLDER_ROLES = new Set(['', 'authenticated', 'anon', 'anonymous', 'user', 'public', 'empleado', 'employee']);
 const ADMIN_ROLES = new Set(['admin', 'manager']);
 const EMPLOYEE_ROLES = new Set(['empleado', 'employee']);
+const QUICK_CREATE_BRAND_VALUE = '__create_brand__';
 
 
 const emitCatalogRefresh = () => {
@@ -267,6 +268,44 @@ function Admin({ defaultTab = 'products', showLauncher = false, openCatalog }) {
   
   // Control de visibilidad del formulario de nueva marca
   const [showNewBrandForm, setShowNewBrandForm] = useState(false);
+  const [isQuickBrandCreating, setIsQuickBrandCreating] = useState(false);
+  const [quickBrandDialog, setQuickBrandDialog] = useState({
+    open: false,
+    name: '',
+    previousValue: '',
+    error: '',
+    info: '',
+  });
+  const quickBrandInputRef = React.useRef(null);
+  const quickBrandCloseTimeoutRef = React.useRef(null);
+
+  function clearQuickBrandCloseTimer() {
+    if (quickBrandCloseTimeoutRef.current) {
+      clearTimeout(quickBrandCloseTimeoutRef.current);
+      quickBrandCloseTimeoutRef.current = null;
+    }
+  }
+
+  React.useEffect(() => {
+    if (!quickBrandDialog.open) {
+      return undefined;
+    }
+    const timer = setTimeout(() => {
+      try {
+        if (quickBrandInputRef.current) {
+          quickBrandInputRef.current.focus();
+          quickBrandInputRef.current.select();
+        }
+      } catch (_error) {}
+    }, 60);
+    return () => clearTimeout(timer);
+  }, [quickBrandDialog.open]);
+
+  React.useEffect(() => {
+    return () => {
+      clearQuickBrandCloseTimer();
+    };
+  }, []);
 
   // Productos
   const [pId, setPId] = useState('');
@@ -393,6 +432,158 @@ function Admin({ defaultTab = 'products', showLauncher = false, openCatalog }) {
   function handleSearch() {
     // La búsqueda se maneja automáticamente con el estado searchQuery
     // Esta función puede ser llamada desde el botón "Buscar" de la barra
+  }
+
+  function openQuickBrandCreator(previousValue = '') {
+    clearQuickBrandCloseTimer();
+    setQuickBrandDialog({
+      open: true,
+      name: '',
+      previousValue,
+      error: '',
+      info: '',
+    });
+  }
+
+  function closeQuickBrandCreator() {
+    clearQuickBrandCloseTimer();
+    setQuickBrandDialog({
+      open: false,
+      name: '',
+      previousValue: '',
+      error: '',
+      info: '',
+    });
+    setIsQuickBrandCreating(false);
+  }
+
+  function handleQuickBrandNameChange(value) {
+    setQuickBrandDialog((prev) => ({
+      ...prev,
+      name: value,
+      error: '',
+      info: '',
+    }));
+  }
+
+  async function handleQuickBrandSubmit(event) {
+    if (event) {
+      event.preventDefault();
+    }
+    if (isQuickBrandCreating) return;
+
+    const trimmedName = (quickBrandDialog.name || '').trim();
+
+    if (!trimmedName) {
+      setQuickBrandDialog((prev) => ({
+        ...prev,
+        error: 'Ingresa un nombre válido.',
+        info: '',
+      }));
+      return;
+    }
+
+    if (!state.user || !state.user.id) {
+      setQuickBrandDialog((prev) => ({
+        ...prev,
+        error: 'Debes iniciar sesión para crear marcas.',
+        info: '',
+      }));
+      return;
+    }
+
+    const existingBrand = state.brands.find(
+      (brand) => (brand.name || '').toLowerCase() === trimmedName.toLowerCase()
+    );
+
+    if (existingBrand) {
+      setPBrandId(existingBrand.id);
+      setQuickBrandDialog((prev) => ({
+        ...prev,
+        error: '',
+        info: 'La marca ya existe. Se seleccionó automáticamente.',
+      }));
+      clearQuickBrandCloseTimer();
+      quickBrandCloseTimeoutRef.current = setTimeout(() => {
+        quickBrandCloseTimeoutRef.current = null;
+        closeQuickBrandCreator();
+      }, 1200);
+      return;
+    }
+
+    try {
+      setIsQuickBrandCreating(true);
+      const savedBrand = await apiSaveBrand({
+        name: trimmedName,
+        description: '',
+        logo: '',
+        userId: state.user.id,
+      });
+      const newBrand = {
+        id: savedBrand?.id ?? null,
+        name: savedBrand?.name ?? trimmedName,
+        description: savedBrand?.description ?? '',
+        logo: savedBrand?.logo ?? '',
+      };
+
+      if (!newBrand.id) {
+        console.warn('No se recibió un id para la nueva marca creada rápidamente.');
+        setQuickBrandDialog((prev) => ({
+          ...prev,
+          error: 'La marca se creó, pero no se recibió un identificador. Refresca la vista para sincronizar.',
+          info: '',
+        }));
+        return;
+      }
+
+      dispatch({ type: ACTIONS.UPSERT_BRAND, payload: newBrand });
+      setPBrandId(newBrand.id);
+      setLastUpdate(new Date());
+      emitCatalogRefresh();
+
+      setQuickBrandDialog((prev) => ({
+        ...prev,
+        error: '',
+        info: 'Marca creada correctamente.',
+      }));
+      clearQuickBrandCloseTimer();
+      quickBrandCloseTimeoutRef.current = setTimeout(() => {
+        quickBrandCloseTimeoutRef.current = null;
+        closeQuickBrandCreator();
+      }, 800);
+    } catch (error) {
+      console.error('Error creando marca desde el selector:', error);
+      setQuickBrandDialog((prev) => ({
+        ...prev,
+        error: error?.message ? `No se pudo crear la marca: ${error.message}` : 'No se pudo crear la marca. Intenta nuevamente.',
+        info: '',
+      }));
+    } finally {
+      setIsQuickBrandCreating(false);
+    }
+  }
+
+  function handleProductBrandChange(event) {
+    const selectedValue = event.target.value;
+
+    if (selectedValue !== QUICK_CREATE_BRAND_VALUE) {
+      setPBrandId(selectedValue);
+      return;
+    }
+
+    event.target.value = pBrandId;
+
+    if (isQuickBrandCreating) {
+      return;
+    }
+
+    openQuickBrandCreator(pBrandId);
+    if (!state.user || !state.user.id) {
+      setQuickBrandDialog((prev) => ({
+        ...prev,
+        error: 'Debes iniciar sesión para crear marcas.',
+      }));
+    }
   }
 
   function loadProduct(id) {
@@ -985,6 +1176,95 @@ function Admin({ defaultTab = 'products', showLauncher = false, openCatalog }) {
                     </button>
                   </div>
                 )}
+
+    {/* Diálogo para crear marca al vuelo */}
+    {quickBrandDialog.open && (
+      <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 3100 }}>
+        <div style={{ width: 420, background: '#f0f0f0', border: '2px outset #f0f0f0', boxShadow: '2px 2px 8px rgba(0,0,0,0.4)' }}>
+          <div style={{ background: 'linear-gradient(to bottom, #316ac5 0%, #1e4a8c 100%)', color: '#fff', padding: '6px 10px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid #1e4a8c' }}>
+            <span style={{ fontWeight: 'bold', fontSize: 12 }}>Crear nueva marca</span>
+            <button type="button" onClick={closeQuickBrandCreator} style={{ background: 'transparent', border: 'none', color: '#fff', fontSize: 14, cursor: 'pointer' }}>X</button>
+          </div>
+          <form onSubmit={handleQuickBrandSubmit}>
+            <div style={{ padding: 14, background: '#fff', border: '1px inset #f0f0f0', display: 'grid', gap: 12 }}>
+              <label style={{ fontSize: 12, color: '#000', display: 'grid', gap: 6 }}>
+                <span>Nombre de la marca</span>
+                <input
+                  ref={quickBrandInputRef}
+                  value={quickBrandDialog.name}
+                  onChange={(e) => handleQuickBrandNameChange(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Escape') {
+                      e.preventDefault();
+                      closeQuickBrandCreator();
+                    }
+                  }}
+                  placeholder="Ej: Contoso"
+                  autoComplete="off"
+                  maxLength={80}
+                  disabled={isQuickBrandCreating}
+                  style={{
+                    width: '100%',
+                    padding: '4px 6px',
+                    border: '1px solid #999',
+                    fontSize: '12px',
+                    fontFamily: 'Tahoma, Arial, sans-serif',
+                    background: isQuickBrandCreating ? '#f8f8f8' : '#fff',
+                    boxShadow: 'inset 0 1px 0 #fff, 0 1px 0 #999',
+                  }}
+                />
+              </label>
+              <div style={{
+                fontSize: 11,
+                color: '#333',
+                background: '#f4f8ff',
+                border: '1px solid #c7daf5',
+                padding: '6px 8px',
+                borderRadius: 3,
+              }}>
+                La marca quedará disponible inmediatamente para nuevos productos.
+              </div>
+              {quickBrandDialog.error && (
+                <div style={{
+                  fontSize: 11,
+                  color: '#cc0000',
+                  background: '#fff5f5',
+                  border: '1px solid #f5c2c7',
+                  padding: '6px 8px',
+                  borderRadius: 3,
+                }}>
+                  {quickBrandDialog.error}
+                </div>
+              )}
+              {quickBrandDialog.info && (
+                <div style={{
+                  fontSize: 11,
+                  color: '#0c327d',
+                  background: '#e5f1ff',
+                  border: '1px solid #7aa2e8',
+                  padding: '6px 8px',
+                  borderRadius: 3,
+                }}>
+                  {quickBrandDialog.info}
+                </div>
+              )}
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, padding: '10px 14px', background: '#e6e6e6', borderTop: '1px solid #c3c3c3' }}>
+              <button
+                type="submit"
+                style={{ ...btn(), minWidth: 96, fontWeight: 'bold', opacity: isQuickBrandCreating ? 0.7 : 1, cursor: isQuickBrandCreating ? 'not-allowed' : 'pointer' }}
+                disabled={isQuickBrandCreating}
+              >
+                {isQuickBrandCreating ? 'Creando...' : 'Crear'}
+              </button>
+              <button type="button" onClick={closeQuickBrandCreator} style={{ ...btn(), minWidth: 80 }}>
+                Cancelar
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    )}
 
     {/* Confirm dialog estilo Windows XP */}
     {confirmDialog.open && (
@@ -1601,7 +1881,7 @@ function Admin({ defaultTab = 'products', showLauncher = false, openCatalog }) {
             <Field label="Marca">
                       <select 
                         value={pBrandId} 
-                        onChange={e => setPBrandId(e.target.value)}
+                        onChange={handleProductBrandChange}
                         style={{
                           width: '100%',
                           padding: '4px 6px',
@@ -1619,6 +1899,7 @@ function Admin({ defaultTab = 'products', showLauncher = false, openCatalog }) {
                 {state.brands.map(b => (
                   <option key={b.id} value={b.id}>{b.name}</option>
                 ))}
+                <option value={QUICK_CREATE_BRAND_VALUE}>+ Crear nueva marca...</option>
               </select>
             </Field>
                   </div>
