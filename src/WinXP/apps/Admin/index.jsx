@@ -17,7 +17,7 @@ import forward from 'assets/windowsIcons/forward.png';
 import up from 'assets/windowsIcons/up.png';
 import edit from 'assets/windowsIcons/edit.png';
 import refresh from 'assets/windowsIcons/refresh.png';
-import errorSound from 'assets/sounds/error.wav';
+import errorSound from 'assets/sounds/erro.wav';
 const PLACEHOLDER_ROLES = new Set(['', 'authenticated', 'anon', 'anonymous', 'user', 'public', 'empleado', 'employee']);
 const ADMIN_ROLES = new Set(['admin', 'manager']);
 const EMPLOYEE_ROLES = new Set(['empleado', 'employee']);
@@ -45,10 +45,12 @@ function Admin({ defaultTab = 'products', showLauncher = false, openCatalog }) {
   const baseRole = (state.user?.role ?? '').toLowerCase();
   const [roleOverride, setRoleOverride] = useState(null);
   const [roleLoading, setRoleLoading] = useState(false);
+  const [roleLookupFailed, setRoleLookupFailed] = useState(false);
 
   React.useEffect(() => {
     setRoleOverride(null);
     setRoleLoading(false);
+    setRoleLookupFailed(false);
   }, [state.user?.id]);
 
   React.useEffect(() => {
@@ -58,6 +60,7 @@ function Admin({ defaultTab = 'products', showLauncher = false, openCatalog }) {
 
     async function fetchRole() {
       setRoleLoading(true);
+      setRoleLookupFailed(false);
       const lookups = [
         { table: 'profiles', field: 'user_id', value: state.user.id },
         { table: 'profiles', field: 'id', value: state.user.id },
@@ -81,6 +84,7 @@ function Admin({ defaultTab = 'products', showLauncher = false, openCatalog }) {
           if (prof && prof.role) {
             setRoleOverride(String(prof.role).trim().toLowerCase());
             setRoleLoading(false);
+            setRoleLookupFailed(false);
             return;
           }
         } catch (_err) {
@@ -90,6 +94,7 @@ function Admin({ defaultTab = 'products', showLauncher = false, openCatalog }) {
 
       if (!cancelled) {
         setRoleLoading(false);
+        setRoleLookupFailed(true);
       }
     }
 
@@ -102,22 +107,33 @@ function Admin({ defaultTab = 'products', showLauncher = false, openCatalog }) {
   const effectiveRole = (roleOverride || baseRole).toLowerCase();
   const isAdmin = ADMIN_ROLES.has(effectiveRole);
   const isEmployee = EMPLOYEE_ROLES.has(effectiveRole);
-  const shouldPlayUnauthorizedSound = !roleLoading && !!state.user && !isAdmin && !isEmployee;
+  const userId = state.user?.id ?? null;
+  const hasResolvedRole = !!roleOverride || !PLACEHOLDER_ROLES.has(baseRole) || roleLookupFailed;
+  const shouldPlayUnauthorizedSound = Boolean(userId) && roleLookupFailed && !isAdmin && !isEmployee;
   const unauthorizedSoundPlayedRef = React.useRef(false);
+  const lastUnauthorizedUserIdRef = React.useRef(null);
 
   React.useEffect(() => {
+    if (userId !== lastUnauthorizedUserIdRef.current) {
+      unauthorizedSoundPlayedRef.current = false;
+      lastUnauthorizedUserIdRef.current = userId;
+    }
+
     if (shouldPlayUnauthorizedSound && !unauthorizedSoundPlayedRef.current) {
       try {
-        new Audio(errorSound).play();
+        if (typeof window !== 'undefined' && typeof Audio !== 'undefined') {
+          new Audio(errorSound).play();
+        }
       } catch (error) {
         console.error('No se pudo reproducir el sonido de error:', error);
       }
       unauthorizedSoundPlayedRef.current = true;
     }
-    if (!shouldPlayUnauthorizedSound) {
+
+    if (!userId || isAdmin || isEmployee || !hasResolvedRole) {
       unauthorizedSoundPlayedRef.current = false;
     }
-  }, [shouldPlayUnauthorizedSound]);
+  }, [userId, shouldPlayUnauthorizedSound, isAdmin, isEmployee, hasResolvedRole]);
   const [lastUpdate, setLastUpdate] = useState(new Date());
   const [sales, setSales] = useState([]);
   const [salesRefreshToken, setSalesRefreshToken] = useState(0);

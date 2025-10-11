@@ -1,11 +1,25 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import styled, { keyframes } from 'styled-components';
 
 import risk from 'assets/windowsIcons/229(16x16).png';
+import { useAppState } from 'state/AppStateContext';
 
 function Balloon({ startAfter = 3000, duration = 15000 }) {
   const [show, setShow] = useState(true);
   const [start, setStart] = useState(false);
+  const { state } = useAppState();
+
+  const displayName = useMemo(() => {
+    const metadata = state.user?.user_metadata || {};
+    return (
+      metadata.full_name ||
+      metadata.name ||
+      state.user?.name ||
+      state.user?.email ||
+      'Usuario'
+    );
+  }, [state.user]);
+
   useEffect(() => {
     const openTimer = setTimeout(() => setStart(true), startAfter);
     const fadeTimer = setTimeout(() => setShow(false), startAfter + duration);
@@ -23,7 +37,7 @@ function Balloon({ startAfter = 3000, duration = 15000 }) {
     start && (
       <Div show={show}>
         <div className="balloon__container">
-          Hola Usuario!
+          Hola {displayName}!
         </div>
       </Div>
     )
