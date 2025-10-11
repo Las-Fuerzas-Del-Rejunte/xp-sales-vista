@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useEffect, useMemo, useReducer, useRef } from 'react';
 import { getSupabaseClient } from 'lib/supabaseClient';
-import { fetchBrands, fetchProducts } from 'lib/apiClient';
+import { fetchBrands, fetchCategories, fetchProducts } from 'lib/apiClient';
 import startupSound from 'assets/sounds/windows-xp-startup.wav';
 
 const PERSIST_KEY = 'app.state.v1';
@@ -10,6 +10,7 @@ const initialData = {
   user: null,
   products: [],
   brands: [],
+  categories: [],
   // filtros de catálogo
   catalog: {
     query: '',
@@ -27,9 +28,12 @@ const ACTIONS = {
   DELETE_PRODUCT: 'DELETE_PRODUCT',
   UPSERT_BRAND: 'UPSERT_BRAND',
   DELETE_BRAND: 'DELETE_BRAND',
+  UPSERT_CATEGORY: 'UPSERT_CATEGORY',
+  DELETE_CATEGORY: 'DELETE_CATEGORY',
   SET_CATALOG_FILTERS: 'SET_CATALOG_FILTERS',
   SET_PRODUCTS: 'SET_PRODUCTS',
   SET_BRANDS: 'SET_BRANDS',
+  SET_CATEGORIES: 'SET_CATEGORIES',
   HYDRATE: 'HYDRATE',
 };
 
@@ -95,14 +99,60 @@ function reducer(state, action) {
 
       return { ...state, brands: [...state.brands, brandToInsert] };
     }
+    case ACTIONS.UPSERT_CATEGORY: {
+      const category = action.payload;
+      if (!category) return state;
+      const normalizedName = typeof category.name === 'string' ? category.name.trim() : '';
+      const existingById = category.id ? state.categories.find((item) => item.id === category.id) : null;
+
+      if (existingById) {
+        return {
+          ...state,
+          categories: state.categories.map((item) =>
+            item.id === category.id ? { ...item, ...category, name: normalizedName || category.name || item.name } : item,
+          ),
+        };
+      }
+
+      const normalizedNameLower = normalizedName.toLowerCase();
+      const existingByName = normalizedNameLower
+        ? state.categories.find((item) => (item.name || '').toLowerCase() === normalizedNameLower)
+        : null;
+
+      if (existingByName) {
+        return {
+          ...state,
+          categories: state.categories.map((item) =>
+            item.id === existingByName.id
+              ? { ...item, ...category, id: existingByName.id, name: normalizedName || existingByName.name }
+              : item,
+          ),
+        };
+      }
+
+      const categoryToInsert = {
+        ...category,
+        id: category.id || `cat_${Date.now()}`,
+        name: normalizedName || category.name || '',
+      };
+
+      return { ...state, categories: [...state.categories, categoryToInsert] };
+    }
     case ACTIONS.DELETE_BRAND: {
       const brandId = action.payload;
       const hasProducts = state.products.some(p => p.brandId === brandId);
       if (hasProducts) return state;
       return { ...state, brands: state.brands.filter(x => x.id !== brandId) };
     }
+    case ACTIONS.DELETE_CATEGORY: {
+      const categoryName = action.payload;
+      if (!categoryName) return state;
+      return { ...state, categories: state.categories.filter((cat) => cat.name !== categoryName && cat.id !== categoryName) };
+    }
     case ACTIONS.SET_BRANDS:
       return { ...state, brands: Array.isArray(action.payload) ? action.payload : [] };
+    case ACTIONS.SET_CATEGORIES:
+      return { ...state, categories: Array.isArray(action.payload) ? action.payload : [] };
     case ACTIONS.SET_CATALOG_FILTERS:
       return { ...state, catalog: { ...state.catalog, ...action.payload } };
     default:
@@ -152,8 +202,16 @@ export function AppStateProvider({ children }) {
       if (saved) {
         const parsed = JSON.parse(saved);
         // No hidratamos user/session para exigir login real
-        const { products, brands, catalog } = parsed || {};
-        dispatch({ type: ACTIONS.HYDRATE, payload: { products: products || [], brands: brands || [], catalog: catalog || initialData.catalog } });
+        const { products, brands, categories, catalog } = parsed || {};
+        dispatch({
+          type: ACTIONS.HYDRATE,
+          payload: {
+            products: products || [],
+            brands: brands || [],
+            categories: categories || [],
+            catalog: catalog || initialData.catalog,
+          },
+        });
       }
     } catch (_e) {}
     supabase.auth.getSession().then(async ({ data }) => {
@@ -198,6 +256,7 @@ export function AppStateProvider({ children }) {
     if (!state.user) {
       dispatch({ type: ACTIONS.SET_BRANDS, payload: [] });
       dispatch({ type: ACTIONS.SET_PRODUCTS, payload: [] });
+      dispatch({ type: ACTIONS.SET_CATEGORIES, payload: [] });
       return;
     }
 
@@ -205,8 +264,9 @@ export function AppStateProvider({ children }) {
 
     (async () => {
       try {
-        const [brands, products] = await Promise.all([
+        const [brands, categories, products] = await Promise.all([
           fetchBrands().catch(() => null),
+          fetchCategories().catch(() => null),
           fetchProducts().catch(() => null),
         ]);
 
@@ -219,6 +279,17 @@ export function AppStateProvider({ children }) {
             userId: brand?.userId ?? brand?.user_id ?? null,
           }));
           dispatch({ type: ACTIONS.SET_BRANDS, payload: normalizedBrands });
+        }
+
+        if (!cancelled && Array.isArray(categories)) {
+          const normalizedCategories = categories.map((category) => ({
+            id: category?.id ?? null,
+            name: category?.name ?? '',
+            description: category?.description ?? '',
+            slug: category?.slug ?? null,
+            userId: category?.userId ?? category?.user_id ?? null,
+          }));
+          dispatch({ type: ACTIONS.SET_CATEGORIES, payload: normalizedCategories });
         }
 
         if (!cancelled && Array.isArray(products)) {
@@ -240,6 +311,7 @@ export function AppStateProvider({ children }) {
         if (!cancelled) {
           dispatch({ type: ACTIONS.SET_BRANDS, payload: [] });
           dispatch({ type: ACTIONS.SET_PRODUCTS, payload: [] });
+          dispatch({ type: ACTIONS.SET_CATEGORIES, payload: [] });
         }
       }
     })();
@@ -251,11 +323,11 @@ export function AppStateProvider({ children }) {
 
   useEffect(() => {
     // Persistimos solo datos de catálogo; nunca la sesión
-    const toPersist = { products: state.products, brands: state.brands, catalog: state.catalog };
+    const toPersist = { products: state.products, brands: state.brands, categories: state.categories, catalog: state.catalog };
     try {
       localStorage.setItem(PERSIST_KEY, JSON.stringify(toPersist));
     } catch (_e) {}
-  }, [state.products, state.brands, state.catalog]);
+  }, [state.products, state.brands, state.categories, state.catalog]);
 
   const api = useMemo(() => ({ supabase, state, dispatch, ACTIONS }), [supabase, state]);
 

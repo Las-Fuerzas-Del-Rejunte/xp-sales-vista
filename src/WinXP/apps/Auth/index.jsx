@@ -233,8 +233,14 @@ function AuthApp() {
             flexWrap: 'wrap',
           }}
         >
+          <button onClick={() => setMode('login')} style={tabButtonStyle(mode === 'login')}>
+            Login
+          </button>
+          <button onClick={() => setMode('register')} style={tabButtonStyle(mode === 'register')}>
+            Registro
+          </button>
           <button onClick={() => setMode('recover')} style={tabButtonStyle(mode === 'recover')}>
-            Recuperar Contraseña
+            Recuperar
           </button>
           <button
             onClick={() => setMode('profile')}
@@ -346,4 +352,6 @@ function AuthApp() {
 }
 
 export default AuthApp;
+
+
 

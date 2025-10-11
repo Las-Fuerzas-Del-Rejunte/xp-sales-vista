@@ -79,6 +79,14 @@ const mapBrand = (raw) => ({
   logo: raw?.logo ?? '',
 });
 
+const mapCategory = (raw) => ({
+  id: raw?.id ?? null,
+  userId: raw?.userId ?? raw?.user_id ?? null,
+  name: raw?.name ?? raw?.title ?? raw?.label ?? '',
+  description: raw?.description ?? '',
+  slug: raw?.slug ?? null,
+});
+
 const mapProduct = (raw) => ({
   id: raw?.id ?? null,
   userId: raw?.userId ?? raw?.user_id ?? null,
@@ -107,6 +115,11 @@ export async function fetchBrands() {
   return Array.isArray(data) ? data.map(mapBrand) : [];
 }
 
+export async function fetchCategories() {
+  const data = await apiFetch('/api/categories');
+  return Array.isArray(data) ? data.map(mapCategory) : [];
+}
+
 export async function fetchProducts() {
   const data = await apiFetch('/api/products');
   return Array.isArray(data) ? data.map(mapProduct) : [];
@@ -125,8 +138,25 @@ export async function saveBrand(payload) {
   return mapBrand(result || { ...body, id: payload.id });
 }
 
+export async function saveCategory(payload) {
+  const body = {
+    name: payload.name,
+    description: payload.description ?? '',
+    slug: payload.slug ?? null,
+    userId: payload.userId,
+  };
+  const endpoint = payload.id ? `/api/categories/${payload.id}` : '/api/categories';
+  const method = payload.id ? 'PUT' : 'POST';
+  const result = await apiFetch(endpoint, { method, body });
+  return mapCategory(result || { ...body, id: payload.id });
+}
+
 export async function deleteBrand(id) {
   await apiFetch(`/api/brands/${id}`, { method: 'DELETE' });
+}
+
+export async function deleteCategory(id) {
+  await apiFetch(`/api/categories/${id}`, { method: 'DELETE' });
 }
 
 export async function saveProduct(payload) {
@@ -179,7 +209,7 @@ export async function fetchLowStockProducts() {
   return Array.isArray(data) ? data.map(mapProduct) : [];
 }
 
-export { mapBrand, mapProduct, mapSale };
+export { mapBrand, mapCategory, mapProduct, mapSale };
 
 
 export async function fetchProduct(id) {

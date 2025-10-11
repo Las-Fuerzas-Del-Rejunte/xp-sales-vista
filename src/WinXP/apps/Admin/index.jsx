@@ -11,7 +11,7 @@ import dropdown from 'assets/windowsIcons/dropdown.png';
 import pullup from 'assets/windowsIcons/pullup.png';
 import windows from 'assets/windowsIcons/windows.png';
 import { WindowDropDowns } from 'components';
-import { saveProduct as apiSaveProduct, deleteProduct as apiDeleteProduct, saveBrand as apiSaveBrand, deleteBrand as apiDeleteBrand, fetchSalesByEmployee, updateSale as apiUpdateSale, deleteSale as apiDeleteSale } from 'lib/apiClient';
+import { saveProduct as apiSaveProduct, deleteProduct as apiDeleteProduct, saveBrand as apiSaveBrand, deleteBrand as apiDeleteBrand, saveCategory as apiSaveCategory, fetchSalesByEmployee, updateSale as apiUpdateSale, deleteSale as apiDeleteSale } from 'lib/apiClient';
 import mcDropDownData from 'WinXP/apps/MyComputer/dropDownData';
 import back from 'assets/windowsIcons/back.png';
 import forward from 'assets/windowsIcons/forward.png';
@@ -23,6 +23,7 @@ const PLACEHOLDER_ROLES = new Set(['', 'authenticated', 'anon', 'anonymous', 'us
 const ADMIN_ROLES = new Set(['admin', 'manager']);
 const EMPLOYEE_ROLES = new Set(['empleado', 'employee']);
 const QUICK_CREATE_BRAND_VALUE = '__create_brand__';
+const QUICK_CREATE_CATEGORY_VALUE = '__create_category__';
 
 
 const emitCatalogRefresh = () => {
@@ -308,6 +309,77 @@ function Admin({ defaultTab = 'products', showLauncher = false, openCatalog }) {
     };
   }, []);
 
+  const [isQuickCategoryCreating, setIsQuickCategoryCreating] = useState(false);
+  const [quickCategoryDialog, setQuickCategoryDialog] = useState({
+    open: false,
+    name: '',
+    previousValue: '',
+    error: '',
+    info: '',
+  });
+  const quickCategoryInputRef = React.useRef(null);
+  const quickCategoryCloseTimeoutRef = React.useRef(null);
+
+  function clearQuickCategoryCloseTimer() {
+    if (quickCategoryCloseTimeoutRef.current) {
+      clearTimeout(quickCategoryCloseTimeoutRef.current);
+      quickCategoryCloseTimeoutRef.current = null;
+    }
+  }
+
+  React.useEffect(() => {
+    if (!quickCategoryDialog.open) {
+      return undefined;
+    }
+    const timer = setTimeout(() => {
+      try {
+        if (quickCategoryInputRef.current) {
+          quickCategoryInputRef.current.focus();
+          quickCategoryInputRef.current.select();
+        }
+      } catch (_error) {}
+    }, 60);
+    return () => clearTimeout(timer);
+  }, [quickCategoryDialog.open]);
+
+  React.useEffect(() => {
+    return () => {
+      clearQuickCategoryCloseTimer();
+    };
+  }, []);
+
+  const categoryOptions = React.useMemo(() => {
+    const entries = new Map();
+    const addOption = (value, label) => {
+      if (!value) return;
+      const normalized = String(value).trim();
+      if (!normalized) return;
+      const key = normalized.toLowerCase();
+      if (!entries.has(key)) {
+        entries.set(key, { value: normalized, label: label || normalized });
+      }
+    };
+
+    addOption('general', 'General');
+    addOption('otros', 'Otros');
+
+    state.categories.forEach((category) => {
+      const name = (category?.name ?? '').trim();
+      if (name) {
+        addOption(name, category.name || name);
+      }
+    });
+
+    state.products.forEach((product) => {
+      const name = (product?.category ?? '').trim();
+      if (name) {
+        addOption(name, name);
+      }
+    });
+
+    return Array.from(entries.values()).sort((a, b) => a.label.localeCompare(b.label));
+  }, [state.categories, state.products]);
+
   // Productos
   const [pId, setPId] = useState('');
   const [pName, setPName] = useState('');
@@ -321,7 +393,7 @@ function Admin({ defaultTab = 'products', showLauncher = false, openCatalog }) {
   const [pPreview, setPPreview] = useState('');
   const [pOriginal, setPOriginal] = useState(null);
 
-  // Calcular automáticamente el stock mínimo como 30% del stock
+  // Calcular automáticamente el stock minimo como 30% del stock
   React.useEffect(() => {
     const s = Number(pStock || 0);
     const autoMin = Math.floor(s * 0.3);
@@ -433,6 +505,155 @@ function Admin({ defaultTab = 'products', showLauncher = false, openCatalog }) {
   function handleSearch() {
     // La búsqueda se maneja automáticamente con el estado searchQuery
     // Esta función puede ser llamada desde el botón "Buscar" de la barra
+  }
+
+  function openQuickCategoryCreator(previousValue = '') {
+    clearQuickCategoryCloseTimer();
+    setQuickCategoryDialog({
+      open: true,
+      name: '',
+      previousValue,
+      error: '',
+      info: '',
+    });
+  }
+
+  function closeQuickCategoryCreator() {
+    clearQuickCategoryCloseTimer();
+    setQuickCategoryDialog({
+      open: false,
+      name: '',
+      previousValue: '',
+      error: '',
+      info: '',
+    });
+    setIsQuickCategoryCreating(false);
+  }
+
+  function handleQuickCategoryNameChange(value) {
+    setQuickCategoryDialog((prev) => ({
+      ...prev,
+      name: value,
+      error: '',
+      info: '',
+    }));
+  }
+
+  async function handleQuickCategorySubmit(event) {
+    if (event) {
+      event.preventDefault();
+    }
+    if (isQuickCategoryCreating) return;
+
+    const trimmedName = (quickCategoryDialog.name || '').trim();
+    if (!trimmedName) {
+      setQuickCategoryDialog((prev) => ({
+        ...prev,
+        error: 'Ingresa un nombre válido.',
+        info: '',
+      }));
+      return;
+    }
+
+    if (!state.user || !state.user.id) {
+      setQuickCategoryDialog((prev) => ({
+        ...prev,
+        error: 'Debes iniciar sesión para crear categorias.',
+        info: '',
+      }));
+      return;
+    }
+
+    const existingCategory = categoryOptions.find(
+      (option) => option.value.toLowerCase() === trimmedName.toLowerCase()
+    );
+
+    if (existingCategory) {
+      setPCategory(existingCategory.value);
+      setQuickCategoryDialog((prev) => ({
+        ...prev,
+        error: '',
+        info: 'La categoria ya existe. Se seleccionó automáticamente.',
+      }));
+      clearQuickCategoryCloseTimer();
+      quickCategoryCloseTimeoutRef.current = setTimeout(() => {
+        quickCategoryCloseTimeoutRef.current = null;
+        closeQuickCategoryCreator();
+      }, 1200);
+      return;
+    }
+
+    try {
+      setIsQuickCategoryCreating(true);
+      const savedCategory = await apiSaveCategory({
+        name: trimmedName,
+        description: '',
+        slug: null,
+        userId: state.user.id,
+      });
+      const newCategory = {
+        id: savedCategory?.id ?? null,
+        name: savedCategory?.name ?? trimmedName,
+        description: savedCategory?.description ?? '',
+        slug: savedCategory?.slug ?? null,
+      };
+
+      if (!newCategory.name) {
+        setQuickCategoryDialog((prev) => ({
+          ...prev,
+          error: 'La categoria se creó, pero no se recibió un nombre válido. Actualiza la página para sincronizar.',
+          info: '',
+        }));
+        return;
+      }
+
+      dispatch({ type: ACTIONS.UPSERT_CATEGORY, payload: newCategory });
+      setPCategory(newCategory.name);
+      setLastUpdate(new Date());
+      emitCatalogRefresh();
+
+      setQuickCategoryDialog((prev) => ({
+        ...prev,
+        error: '',
+        info: 'Categoria creada correctamente.',
+      }));
+      clearQuickCategoryCloseTimer();
+      quickCategoryCloseTimeoutRef.current = setTimeout(() => {
+        quickCategoryCloseTimeoutRef.current = null;
+        closeQuickCategoryCreator();
+      }, 800);
+    } catch (error) {
+      console.error('Error creando categoria desde el selector:', error);
+      setQuickCategoryDialog((prev) => ({
+        ...prev,
+        error: error?.message ? `No se pudo crear la categoria: ${error.message}` : 'No se pudo crear la categoria. Intenta nuevamente.',
+        info: '',
+      }));
+    } finally {
+      setIsQuickCategoryCreating(false);
+    }
+  }
+
+  function handleProductCategoryChange(event) {
+    const selectedValue = event.target.value;
+
+    if (selectedValue !== QUICK_CREATE_CATEGORY_VALUE) {
+      setPCategory(selectedValue);
+      return;
+    }
+
+    event.target.value = pCategory;
+
+    if (isQuickCategoryCreating) {
+      return;
+    }
+
+    if (!state.user || !state.user.id) {
+      alert('Debe iniciar sesión para crear categorias.');
+      return;
+    }
+
+    openQuickCategoryCreator(pCategory);
   }
 
   function openQuickBrandCreator(previousValue = '') {
@@ -812,7 +1033,7 @@ function Admin({ defaultTab = 'products', showLauncher = false, openCatalog }) {
                       🔒
                     </div>
                     
-                    {/* Título principal */}
+                    {/* Titulo principal */}
                     <div style={{
                       fontSize: '18px',
                       fontWeight: 'bold',
@@ -989,7 +1210,7 @@ function Admin({ defaultTab = 'products', showLauncher = false, openCatalog }) {
                     🔑
                   </div>
                   
-                  {/* Título principal */}
+                  {/* Titulo principal */}
                   <div style={{
                     fontSize: '18px',
                     fontWeight: 'bold',
@@ -1289,6 +1510,115 @@ function Admin({ defaultTab = 'products', showLauncher = false, openCatalog }) {
       </div>
     )}
 
+    {quickCategoryDialog.open && (
+      <div
+        style={{
+          position: 'fixed',
+          inset: 0,
+          background: 'rgba(0,0,0,0.35)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 3100,
+          padding: 16,
+          boxSizing: 'border-box',
+        }}
+      >
+        <div className="window" style={{ width: 360, maxWidth: '100%' }}>
+          <div className="title-bar">
+            <div className="title-bar-text">Crear nueva categoria</div>
+            <div className="title-bar-controls">
+              <button type="button" aria-label="Minimize" disabled />
+              <button type="button" aria-label="Maximize" disabled />
+              <button type="button" aria-label="Close" onClick={closeQuickCategoryCreator} />
+            </div>
+          </div>
+          <form onSubmit={handleQuickCategorySubmit}>
+            <div className="window-body" style={{ display: 'grid', gap: 12 }}>
+              <div className="field-row-stacked">
+                <label htmlFor="qp-category-name">Nombre de la categoria</label>
+                <input
+                  id="qp-category-name"
+                  ref={quickCategoryInputRef}
+                  value={quickCategoryDialog.name}
+                  onChange={(e) => handleQuickCategoryNameChange(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Escape') {
+                      e.preventDefault();
+                      closeQuickCategoryCreator();
+                    }
+                  }}
+                  placeholder="Ej: Accesorios"
+                  autoComplete="off"
+                  maxLength={80}
+                  disabled={isQuickCategoryCreating}
+                  style={{ background: isQuickCategoryCreating ? '#f5f5f5' : undefined }}
+                />
+              </div>
+              <div
+                className="field-row-stacked"
+                style={{
+                  fontSize: 12,
+                  color: '#003399',
+                  background: '#f4f8ff',
+                  border: '1px solid #c7daf5',
+                  padding: '6px 8px',
+                }}
+              >
+                La categoria queda disponible de inmediato para asignarla a tus productos.
+              </div>
+              {quickCategoryDialog.error && (
+                <div
+                  className="field-row-stacked"
+                  style={{
+                    fontSize: 12,
+                    color: '#cc0000',
+                    background: '#fff5f5',
+                    border: '1px solid #f5c2c7',
+                    padding: '6px 8px',
+                  }}
+                >
+                  {quickCategoryDialog.error}
+                </div>
+              )}
+              {quickCategoryDialog.info && (
+                <div
+                  className="field-row-stacked"
+                  style={{
+                    fontSize: 12,
+                    color: '#0c327d',
+                    background: '#e5f1ff',
+                    border: '1px solid #7aa2e8',
+                    padding: '6px 8px',
+                  }}
+                >
+                  {quickCategoryDialog.info}
+                </div>
+              )}
+            </div>
+            <div className="window-body" style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, paddingTop: 0 }}>
+              <button
+                type="submit"
+                style={{
+                  ...btn(),
+                  minWidth: 96,
+                  fontWeight: 'bold',
+                  opacity: isQuickCategoryCreating ? 0.75 : 1,
+                  cursor: isQuickCategoryCreating ? 'not-allowed' : 'pointer',
+                }}
+                disabled={isQuickCategoryCreating}
+              >
+                {isQuickCategoryCreating ? 'Creando...' : 'Crear'}
+              </button>
+              <button type="button" onClick={closeQuickCategoryCreator} style={{ ...btn(), minWidth: 80 }}>
+                Cancelar
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    )}
+
     {/* Confirm dialog estilo Windows XP */}
     {confirmDialog.open && (
       <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.25)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 3000 }}>
@@ -1385,7 +1715,7 @@ function Admin({ defaultTab = 'products', showLauncher = false, openCatalog }) {
                           display: 'block',
                           fontWeight: 'bold',
                           textShadow: '0 1px 1px rgba(255,255,255,0.8)'
-                        }}>Categoría</label>
+                        }}>Categoria</label>
                         <select 
                           value={filterCategory}
                           onChange={(e) => setFilterCategory(e.target.value)}
@@ -1401,9 +1731,12 @@ function Admin({ defaultTab = 'products', showLauncher = false, openCatalog }) {
                             cursor: 'pointer'
                           }}
                         >
-                          <option value="all">Todas las categorías</option>
-                          <option value="general">General</option>
-                          <option value="otros">Otros</option>
+                          <option value="all">Todas las categorias</option>
+                          {categoryOptions.map((option) => (
+                            <option key={option.value} value={option.value}>
+                              {option.label}
+                            </option>
+                          ))}
                         </select>
                       </div>
                     </div>
@@ -1467,7 +1800,7 @@ function Admin({ defaultTab = 'products', showLauncher = false, openCatalog }) {
                         }}>Rango de Precios</label>
                         <div style={{ display: 'flex', gap: '6px' }}>
                           <div style={{ flex: 1 }}>
-                            <label style={{ fontSize: '10px', color: '#666', marginBottom: '2px', display: 'block' }}>Mín.</label>
+                            <label style={{ fontSize: '10px', color: '#666', marginBottom: '2px', display: 'block' }}>Min.</label>
                             <input 
                               type="number" 
                               placeholder="0" 
@@ -1633,7 +1966,7 @@ function Admin({ defaultTab = 'products', showLauncher = false, openCatalog }) {
                         <span>Sin imagen</span>
                       </div>
                     )}
-                    {/* Badge de categoría estilo Windows XP */}
+                    {/* Badge de categoria estilo Windows XP */}
                     <div style={{
                       position: 'absolute',
                       top: '4px',
@@ -1702,7 +2035,7 @@ function Admin({ defaultTab = 'products', showLauncher = false, openCatalog }) {
                       </div>
                       {(typeof p.stock_quantity === 'number') && (
                         <div style={{ fontSize: 10, color: '#666', textAlign: 'center' }}>
-                          Disponible: {p.stock_quantity}{typeof p.min_stock === 'number' ? ` (mínimo ${p.min_stock})` : ''}
+                          Disponible: {p.stock_quantity}{typeof p.min_stock === 'number' ? ` (minimo ${p.min_stock})` : ''}
                         </div>
                       )}
                     </div>
@@ -1880,10 +2213,10 @@ function Admin({ defaultTab = 'products', showLauncher = false, openCatalog }) {
                     marginBottom: '6px'
                   }}>Categorización</div>
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(200px,1fr))', gap: '8px' }}>
-            <Field label="Categoría">
+            <Field label="Categoria">
                       <select 
                         value={pCategory} 
-                        onChange={e => setPCategory(e.target.value)}
+                        onChange={handleProductCategoryChange}
                         style={{
                           width: '100%',
                           padding: '4px 6px',
@@ -1897,8 +2230,10 @@ function Admin({ defaultTab = 'products', showLauncher = false, openCatalog }) {
                         onFocus={(e) => e.target.style.border = '1px solid #4a90e2'}
                         onBlur={(e) => e.target.style.border = '1px solid #999'}
                       >
-                <option value="general">General</option>
-                <option value="otros">Otros</option>
+                {categoryOptions.map(option => (
+                  <option key={option.value} value={option.value}>{option.label}</option>
+                ))}
+                <option value={QUICK_CREATE_CATEGORY_VALUE}>+ Crear nueva categoria...</option>
               </select>
             </Field>
             <Field label="Marca">
@@ -2822,5 +3157,6 @@ const Div = styled.div`
 `;
 
 export default Admin;
+
 
 
