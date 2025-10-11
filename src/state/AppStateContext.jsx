@@ -1,6 +1,7 @@
-import React, { createContext, useContext, useEffect, useMemo, useReducer } from 'react';
+import React, { createContext, useContext, useEffect, useMemo, useReducer, useRef } from 'react';
 import { getSupabaseClient } from 'lib/supabaseClient';
 import { fetchBrands, fetchProducts } from 'lib/apiClient';
+import startupSound from 'assets/sounds/windows-xp-startup.wav';
 
 const PERSIST_KEY = 'app.state.v1';
 
@@ -85,6 +86,7 @@ const AppStateContext = createContext(null);
 export function AppStateProvider({ children }) {
   const supabase = useMemo(() => getSupabaseClient(), []);
   const [state, dispatch] = useReducer(reducer, initialData);
+  const previousUserIdRef = useRef(null);
 
   async function resolveUserWithRole(baseUser) {
     if (!baseUser) return null;
@@ -144,6 +146,24 @@ export function AppStateProvider({ children }) {
       try { authListener.subscription.unsubscribe(); } catch (_e) {}
     };
   }, [supabase]);
+
+  useEffect(() => {
+    const currentUserId = state.user?.id || null;
+    const previousUserId = previousUserIdRef.current;
+    const canPlayAudio = typeof window !== 'undefined' && typeof Audio !== 'undefined';
+
+    if (currentUserId && currentUserId !== previousUserId && canPlayAudio) {
+      try {
+        new Audio(startupSound).play();
+      } catch (error) {
+        console.error('No se pudo reproducir el sonido de inicio de sesión:', error);
+      }
+    }
+
+    if (previousUserId !== currentUserId) {
+      previousUserIdRef.current = currentUserId;
+    }
+  }, [state.user]);
 
   useEffect(() => {
     if (!state.user) {

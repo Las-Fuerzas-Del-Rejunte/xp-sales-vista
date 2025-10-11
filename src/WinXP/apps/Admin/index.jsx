@@ -17,6 +17,7 @@ import forward from 'assets/windowsIcons/forward.png';
 import up from 'assets/windowsIcons/up.png';
 import edit from 'assets/windowsIcons/edit.png';
 import refresh from 'assets/windowsIcons/refresh.png';
+import errorSound from 'assets/sounds/error.wav';
 const PLACEHOLDER_ROLES = new Set(['', 'authenticated', 'anon', 'anonymous', 'user', 'public', 'empleado', 'employee']);
 const ADMIN_ROLES = new Set(['admin', 'manager']);
 const EMPLOYEE_ROLES = new Set(['empleado', 'employee']);
@@ -101,6 +102,22 @@ function Admin({ defaultTab = 'products', showLauncher = false, openCatalog }) {
   const effectiveRole = (roleOverride || baseRole).toLowerCase();
   const isAdmin = ADMIN_ROLES.has(effectiveRole);
   const isEmployee = EMPLOYEE_ROLES.has(effectiveRole);
+  const shouldPlayUnauthorizedSound = !roleLoading && !!state.user && !isAdmin && !isEmployee;
+  const unauthorizedSoundPlayedRef = React.useRef(false);
+
+  React.useEffect(() => {
+    if (shouldPlayUnauthorizedSound && !unauthorizedSoundPlayedRef.current) {
+      try {
+        new Audio(errorSound).play();
+      } catch (error) {
+        console.error('No se pudo reproducir el sonido de error:', error);
+      }
+      unauthorizedSoundPlayedRef.current = true;
+    }
+    if (!shouldPlayUnauthorizedSound) {
+      unauthorizedSoundPlayedRef.current = false;
+    }
+  }, [shouldPlayUnauthorizedSound]);
   const [lastUpdate, setLastUpdate] = useState(new Date());
   const [sales, setSales] = useState([]);
   const [salesRefreshToken, setSalesRefreshToken] = useState(0);
