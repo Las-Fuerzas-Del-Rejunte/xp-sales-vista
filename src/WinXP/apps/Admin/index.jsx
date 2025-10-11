@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import styled from 'styled-components';
 import { useAppState } from 'state/AppStateContext';
+import 'xp.css/dist/XP.css';
 // FontAwesome removed due to compatibility issues - using Unicode icons instead
 import search from 'assets/windowsIcons/299(32x32).png';
 import folderOpen from 'assets/windowsIcons/337(32x32).png';
@@ -1179,17 +1180,34 @@ function Admin({ defaultTab = 'products', showLauncher = false, openCatalog }) {
 
     {/* Diálogo para crear marca al vuelo */}
     {quickBrandDialog.open && (
-      <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 3100 }}>
-        <div style={{ width: 420, background: '#f0f0f0', border: '2px outset #f0f0f0', boxShadow: '2px 2px 8px rgba(0,0,0,0.4)' }}>
-          <div style={{ background: 'linear-gradient(to bottom, #316ac5 0%, #1e4a8c 100%)', color: '#fff', padding: '6px 10px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid #1e4a8c' }}>
-            <span style={{ fontWeight: 'bold', fontSize: 12 }}>Crear nueva marca</span>
-            <button type="button" onClick={closeQuickBrandCreator} style={{ background: 'transparent', border: 'none', color: '#fff', fontSize: 14, cursor: 'pointer' }}>X</button>
+      <div
+        style={{
+          position: 'fixed',
+          inset: 0,
+          background: 'rgba(0,0,0,0.35)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 3100,
+          padding: 16,
+          boxSizing: 'border-box',
+        }}
+      >
+        <div className="window" style={{ width: 360, maxWidth: '100%' }}>
+          <div className="title-bar">
+            <div className="title-bar-text">Crear nueva marca</div>
+            <div className="title-bar-controls">
+              <button type="button" aria-label="Minimize" disabled />
+              <button type="button" aria-label="Maximize" disabled />
+              <button type="button" aria-label="Close" onClick={closeQuickBrandCreator} />
+            </div>
           </div>
           <form onSubmit={handleQuickBrandSubmit}>
-            <div style={{ padding: 14, background: '#fff', border: '1px inset #f0f0f0', display: 'grid', gap: 12 }}>
-              <label style={{ fontSize: 12, color: '#000', display: 'grid', gap: 6 }}>
-                <span>Nombre de la marca</span>
+            <div className="window-body" style={{ display: 'grid', gap: 12 }}>
+              <div className="field-row-stacked">
+                <label htmlFor="qp-brand-name">Nombre de la marca</label>
                 <input
+                  id="qp-brand-name"
                   ref={quickBrandInputRef}
                   value={quickBrandDialog.name}
                   onChange={(e) => handleQuickBrandNameChange(e.target.value)}
@@ -1203,56 +1221,61 @@ function Admin({ defaultTab = 'products', showLauncher = false, openCatalog }) {
                   autoComplete="off"
                   maxLength={80}
                   disabled={isQuickBrandCreating}
-                  style={{
-                    width: '100%',
-                    padding: '4px 6px',
-                    border: '1px solid #999',
-                    fontSize: '12px',
-                    fontFamily: 'Tahoma, Arial, sans-serif',
-                    background: isQuickBrandCreating ? '#f8f8f8' : '#fff',
-                    boxShadow: 'inset 0 1px 0 #fff, 0 1px 0 #999',
-                  }}
+                  style={{ background: isQuickBrandCreating ? '#f5f5f5' : undefined }}
                 />
-              </label>
-              <div style={{
-                fontSize: 11,
-                color: '#333',
-                background: '#f4f8ff',
-                border: '1px solid #c7daf5',
-                padding: '6px 8px',
-                borderRadius: 3,
-              }}>
-                La marca quedará disponible inmediatamente para nuevos productos.
+              </div>
+              <div
+                className="field-row-stacked"
+                style={{
+                  fontSize: 12,
+                  color: '#003399',
+                  background: '#f4f8ff',
+                  border: '1px solid #c7daf5',
+                  padding: '6px 8px',
+                }}
+              >
+                La marca queda disponible inmediatamente para asignarla a un producto. Asegúrate de
+                escribirla tal como quieres que aparezca en el catálogo.
               </div>
               {quickBrandDialog.error && (
-                <div style={{
-                  fontSize: 11,
-                  color: '#cc0000',
-                  background: '#fff5f5',
-                  border: '1px solid #f5c2c7',
-                  padding: '6px 8px',
-                  borderRadius: 3,
-                }}>
+                <div
+                  className="field-row-stacked"
+                  style={{
+                    fontSize: 12,
+                    color: '#cc0000',
+                    background: '#fff5f5',
+                    border: '1px solid #f5c2c7',
+                    padding: '6px 8px',
+                  }}
+                >
                   {quickBrandDialog.error}
                 </div>
               )}
               {quickBrandDialog.info && (
-                <div style={{
-                  fontSize: 11,
-                  color: '#0c327d',
-                  background: '#e5f1ff',
-                  border: '1px solid #7aa2e8',
-                  padding: '6px 8px',
-                  borderRadius: 3,
-                }}>
+                <div
+                  className="field-row-stacked"
+                  style={{
+                    fontSize: 12,
+                    color: '#0c327d',
+                    background: '#e5f1ff',
+                    border: '1px solid #7aa2e8',
+                    padding: '6px 8px',
+                  }}
+                >
                   {quickBrandDialog.info}
                 </div>
               )}
             </div>
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, padding: '10px 14px', background: '#e6e6e6', borderTop: '1px solid #c3c3c3' }}>
+            <div className="window-body" style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, paddingTop: 0 }}>
               <button
                 type="submit"
-                style={{ ...btn(), minWidth: 96, fontWeight: 'bold', opacity: isQuickBrandCreating ? 0.7 : 1, cursor: isQuickBrandCreating ? 'not-allowed' : 'pointer' }}
+                style={{
+                  ...btn(),
+                  minWidth: 96,
+                  fontWeight: 'bold',
+                  opacity: isQuickBrandCreating ? 0.75 : 1,
+                  cursor: isQuickBrandCreating ? 'not-allowed' : 'pointer',
+                }}
                 disabled={isQuickBrandCreating}
               >
                 {isQuickBrandCreating ? 'Creando...' : 'Crear'}
