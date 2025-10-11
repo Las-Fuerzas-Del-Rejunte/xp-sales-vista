@@ -17,6 +17,10 @@ import forward from 'assets/windowsIcons/forward.png';
 import up from 'assets/windowsIcons/up.png';
 import edit from 'assets/windowsIcons/edit.png';
 import refresh from 'assets/windowsIcons/refresh.png';
+const PLACEHOLDER_ROLES = new Set(['', 'authenticated', 'anon', 'anonymous', 'user', 'public', 'empleado', 'employee']);
+const ADMIN_ROLES = new Set(['admin', 'manager']);
+const EMPLOYEE_ROLES = new Set(['empleado', 'employee']);
+
 
 const emitCatalogRefresh = () => {
   try {
@@ -34,12 +38,69 @@ function Field({ label, children }) {
 }
 
 function Admin({ defaultTab = 'products', showLauncher = false, openCatalog }) {
-  const { state, dispatch, ACTIONS } = useAppState();
+  const { supabase, state, dispatch, ACTIONS } = useAppState();
   const [tab, setTab] = useState(defaultTab);
-  // Derivar el rol a partir del perfil sincronizado
-  const userRole = (state.user?.role ?? '').toLowerCase();
-  const isAdmin = ['admin', 'manager'].includes(userRole);
-  const isEmployee = ['empleado', 'employee'].includes(userRole);
+
+  const baseRole = (state.user?.role ?? '').toLowerCase();
+  const [roleOverride, setRoleOverride] = useState(null);
+  const [roleLoading, setRoleLoading] = useState(false);
+
+  React.useEffect(() => {
+    setRoleOverride(null);
+    setRoleLoading(false);
+  }, [state.user?.id]);
+
+  React.useEffect(() => {
+    if (!state.user?.id || !supabase) return;
+    if (!PLACEHOLDER_ROLES.has(baseRole) || roleOverride) return;
+    let cancelled = false;
+
+    async function fetchRole() {
+      setRoleLoading(true);
+      const lookups = [
+        { table: 'profiles', field: 'user_id', value: state.user.id },
+        { table: 'profiles', field: 'id', value: state.user.id },
+        { table: 'profiles', field: 'email', value: state.user.email },
+        { table: 'profile', field: 'user_id', value: state.user.id },
+        { table: 'profile', field: 'id', value: state.user.id },
+      ];
+
+      for (let i = 0; i < lookups.length && !cancelled; i += 1) {
+        const q = lookups[i];
+        try {
+          const { data: prof, error } = await supabase
+            .from(q.table)
+            .select('role')
+            .eq(q.field, q.value)
+            .maybeSingle();
+          if (cancelled) return;
+          if (error) {
+            continue;
+          }
+          if (prof && prof.role) {
+            setRoleOverride(String(prof.role).trim().toLowerCase());
+            setRoleLoading(false);
+            return;
+          }
+        } catch (_err) {
+          if (cancelled) return;
+        }
+      }
+
+      if (!cancelled) {
+        setRoleLoading(false);
+      }
+    }
+
+    fetchRole();
+    return () => {
+      cancelled = true;
+    };
+  }, [supabase, state.user?.id, state.user?.email, baseRole, roleOverride]);
+
+  const effectiveRole = (roleOverride || baseRole).toLowerCase();
+  const isAdmin = ADMIN_ROLES.has(effectiveRole);
+  const isEmployee = EMPLOYEE_ROLES.has(effectiveRole);
   const [lastUpdate, setLastUpdate] = useState(new Date());
   const [sales, setSales] = useState([]);
   const [salesRefreshToken, setSalesRefreshToken] = useState(0);
@@ -450,6 +511,11 @@ function Admin({ defaultTab = 'products', showLauncher = false, openCatalog }) {
   if (!state.user) {
     return <div style={{ padding: 12 }}>Cargando sesión…</div>;
   }
+
+  if (roleLoading && PLACEHOLDER_ROLES.has(baseRole) && !isAdmin) {
+    return <div style={{ padding: 12 }}>Verificando permisos...</div>;
+  }
+
   if (!isAdmin) {
     // Debug ligero para ver qué llega del backend (quitar en producción)
     console.log('user->', state.user);
