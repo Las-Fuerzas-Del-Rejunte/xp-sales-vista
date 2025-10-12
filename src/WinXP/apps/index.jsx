@@ -126,7 +126,7 @@ export const defaultIconState = [
   {
     id: 3,
     icon: mine,
-    title: 'Minesweeper',
+    title: 'Busca Minas',
     component: Minesweeper,
     isFocus: false,
     position: { x: 60, y: 430 },
@@ -171,7 +171,7 @@ export const defaultIconState = [
   {
     id: 8,
     icon: userIcon,
-    title: 'Auth',
+    title: 'Perfil Usuario',
     component: Auth,
     isFocus: false,
     position: { x: 190, y: 430 },
