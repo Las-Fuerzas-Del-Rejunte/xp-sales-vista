@@ -2963,8 +2963,7 @@ function Admin({ defaultTab = 'products', showLauncher = false, openCatalog }) {
                       }}>
                         {sale.paymentMethod === 'efectivo' ? '💵 Efectivo' :
                          sale.paymentMethod === 'tarjeta' ? '💳 Tarjeta' :
-                         sale.paymentMethod === 'transferencia' ? '🏦 Transferencia' :
-                         sale.paymentMethod === 'paypal' ? '🅿️ PayPal' : sale.paymentMethod}
+                         sale.paymentMethod === 'transferencia' ? '🏦 Transferencia' : sale.paymentMethod}
                       </div>
                       <div style={{ fontSize: '10px', color: '#666' }}>
                         {sale.date.toLocaleDateString()}
@@ -3039,7 +3038,6 @@ function Admin({ defaultTab = 'products', showLauncher = false, openCatalog }) {
                       <option value="efectivo">Efectivo</option>
                       <option value="tarjeta">Tarjeta</option>
                       <option value="transferencia">Transferencia</option>
-                      <option value="paypal">PayPal</option>
                     </select>
                   </div>
                   <div>

@@ -1222,7 +1222,6 @@ function Catalog() {
                 <option value="efectivo">💵 Efectivo</option>
                 <option value="tarjeta">💳 Tarjeta de Crédito/Débito</option>
                 <option value="transferencia">🏦 Transferencia Bancaria</option>
-                <option value="paypal">🅿️ PayPal</option>
               </select>
             </div>
 
