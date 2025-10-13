@@ -1,6 +1,7 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import styled from 'styled-components';
 import { useAppState } from 'state/AppStateContext';
+import 'xp.css/dist/XP.css';
 import search from 'assets/windowsIcons/299(32x32).png';
 import folderOpen from 'assets/windowsIcons/337(32x32).png';
 import go from 'assets/windowsIcons/290.png';
@@ -15,8 +16,46 @@ import back from 'assets/windowsIcons/back.png';
 import forward from 'assets/windowsIcons/forward.png';
 import up from 'assets/windowsIcons/up.png';
 
+const LOCAL_CUSTOMERS_KEY = 'xp.sales.catalog.customers.v1';
+const CUSTOMER_SOURCE_PRIORITY = {
+  supabase: 3,
+  supabase_sales: 2,
+  local: 1,
+};
+
+const sanitizeField = (value) => {
+  if (value === null || value === undefined) return '';
+  return String(value).trim();
+};
+
+const normalizePhone = (phone) => sanitizeField(phone).replace(/\D+/g, '');
+
+const buildCustomerKey = (name, email, phone) => {
+  const safeName = sanitizeField(name).toLowerCase();
+  const safeEmail = sanitizeField(email).toLowerCase();
+  const safePhone = normalizePhone(phone);
+  return `${safeName}|${safeEmail}|${safePhone}`;
+};
+
+const makeCustomerRecord = ({ id, name, email, phone, source = 'supabase', createdAt = null }) => {
+  const sanitizedName = sanitizeField(name);
+  const sanitizedEmail = sanitizeField(email);
+  const sanitizedPhone = sanitizeField(phone);
+  const key = buildCustomerKey(sanitizedName, sanitizedEmail, sanitizedPhone);
+  const displayName = sanitizedName || sanitizedEmail || (sanitizedPhone ? `Tel: ${sanitizedPhone}` : 'Cliente sin nombre');
+  return {
+    id: id || key,
+    key,
+    name: sanitizedName,
+    email: sanitizedEmail,
+    phone: sanitizedPhone,
+    source,
+    createdAt,
+  };
+};
+
 function Catalog() {
-  const { state, dispatch, ACTIONS } = useAppState();
+  const { state, dispatch, ACTIONS, supabase } = useAppState();
   const [detailId, setDetailId] = useState(null);
   const [query, setQuery] = useState(state.catalog.query || '');
   const [brandId, setBrandId] = useState(state.catalog.brandId || 'all');
@@ -74,12 +113,50 @@ function Catalog() {
   const [paymentMethod, setPaymentMethod] = useState('');
   const [cartWarnings, setCartWarnings] = useState({}); // { productId: 'sin_stock' | 'bajo_minimo' }
   const [customerData, setCustomerData] = useState({
+    id: null,
     name: '',
     email: '',
     phone: ''
   });
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [saleData, setSaleData] = useState(null);
+  const [customerSearchTerm, setCustomerSearchTerm] = useState('');
+  const [customerResults, setCustomerResults] = useState([]);
+  const [customerLookupLoading, setCustomerLookupLoading] = useState(false);
+  const [customerLookupError, setCustomerLookupError] = useState(null);
+  const [showCustomerCreator, setShowCustomerCreator] = useState(false);
+  const [newCustomerData, setNewCustomerData] = useState({ name: '', email: '', phone: '' });
+  const [creatingCustomer, setCreatingCustomer] = useState(false);
+  const [createCustomerError, setCreateCustomerError] = useState(null);
+  const customerSearchDebounceRef = React.useRef(null);
+  const [localCustomers, setLocalCustomers] = useState(() => {
+    if (typeof window === 'undefined') return [];
+    try {
+      const raw = window.localStorage.getItem(LOCAL_CUSTOMERS_KEY);
+      if (!raw) return [];
+      const parsed = JSON.parse(raw);
+      if (!Array.isArray(parsed)) return [];
+      return parsed
+        .map((entry) => makeCustomerRecord({ ...entry, source: 'local' }))
+        .filter(Boolean);
+    } catch (_error) {
+      return [];
+    }
+  });
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    try {
+      const payload = localCustomers.map((entry) => ({
+        id: entry.id,
+        name: entry.name,
+        email: entry.email,
+        phone: entry.phone,
+        source: 'local',
+        createdAt: entry.createdAt || null,
+      }));
+      window.localStorage.setItem(LOCAL_CUSTOMERS_KEY, JSON.stringify(payload));
+    } catch (_error) {}
+  }, [localCustomers]);
   
   // Detectar el rol del usuario para ajustar permisos en la interfaz
   const userRole = (state.user?.role ?? '').toLowerCase();
@@ -166,8 +243,16 @@ function Catalog() {
   const clearCart = () => {
     setCart([]);
     setCartWarnings({});
+    setCustomerData({ id: null, name: '', email: '', phone: '' });
+    setCustomerSearchTerm('');
+    setCustomerResults([]);
+    setCustomerLookupError(null);
     setShowCart(false);
     setShowCheckout(false);
+    setPaymentMethod('');
+    setShowCustomerCreator(false);
+    setNewCustomerData({ name: '', email: '', phone: '' });
+    setCreateCustomerError(null);
   };
 
   // Verificar stock del carrito al abrirlo o cambiar cantidades
@@ -194,6 +279,210 @@ function Catalog() {
       }
     })();
   }, [cart]);
+
+  const loadCustomers = React.useCallback(async (rawTerm = '') => {
+    const normalizedSearch = sanitizeField(rawTerm).toLowerCase();
+    setCustomerLookupError(null);
+    let supabaseEntries = [];
+    if (!supabase) {
+      setCustomerLookupLoading(false);
+    } else {
+      setCustomerLookupLoading(true);
+      try {
+        const { data, error } = await supabase
+          .from('sales')
+          .select('id, notes, created_at')
+          .order('created_at', { ascending: false })
+          .limit(400);
+        if (error) throw error;
+        const seen = new Set();
+        for (const row of data || []) {
+          let notes = row?.notes;
+          if (!notes) continue;
+          if (typeof notes === 'string') {
+            try {
+              notes = JSON.parse(notes);
+            } catch (_e) {
+              continue;
+            }
+          }
+          const info = notes?.customerData || notes?.customer || null;
+          if (!info) continue;
+          const candidate = makeCustomerRecord({
+            id: row?.id ? `sale-${row.id}` : undefined,
+            name: info.name,
+            email: info.email,
+            phone: info.phone,
+            createdAt: row?.created_at || null,
+            source: 'supabase',
+          });
+          if ((!candidate.name && !candidate.email && !candidate.phone) || !candidate.key) continue;
+          if (seen.has(candidate.key)) continue;
+          seen.add(candidate.key);
+          supabaseEntries.push(candidate);
+        }
+      } catch (error) {
+        console.error('No se pudieron obtener clientes desde Supabase:', error);
+        setCustomerLookupError(
+          error?.code === 'PGRST205'
+            ? 'No se encontró la tabla de clientes en Supabase. Se mostrarán solamente clientes locales.'
+            : (error.message || 'No se pudo obtener clientes registrados.')
+        );
+      } finally {
+        setCustomerLookupLoading(false);
+      }
+    }
+    const combined = [...supabaseEntries, ...localCustomers];
+    const mergedMap = new Map();
+    for (const entry of combined) {
+      if (!entry || !entry.key) continue;
+      if (!mergedMap.has(entry.key)) {
+        mergedMap.set(entry.key, entry);
+      }
+    }
+    let finalList = Array.from(mergedMap.values());
+    if (normalizedSearch) {
+      finalList = finalList.filter((item) => {
+        const haystack = [
+          item.name.toLowerCase(),
+          item.email.toLowerCase(),
+          item.phone.toLowerCase(),
+        ];
+        return haystack.some((value) => value.includes(normalizedSearch));
+      });
+    }
+    finalList.sort((a, b) => {
+      const sourceWeight = a.source === b.source ? 0 : a.source === 'supabase' ? -1 : 1;
+      if (sourceWeight !== 0) return sourceWeight;
+      if (a.createdAt && b.createdAt) {
+        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+      }
+      return a.name.localeCompare(b.name);
+    });
+    setCustomerResults(finalList);
+  }, [supabase, localCustomers]);
+
+  useEffect(() => {
+    if (!showCheckout) {
+      if (customerSearchDebounceRef.current) {
+        clearTimeout(customerSearchDebounceRef.current);
+        customerSearchDebounceRef.current = null;
+      }
+      setShowCustomerCreator(false);
+      setCreateCustomerError(null);
+      setNewCustomerData({ name: '', email: '', phone: '' });
+      return;
+    }
+    setCustomerSearchTerm('');
+    setCreateCustomerError(null);
+    setShowCustomerCreator(false);
+    loadCustomers('');
+  }, [showCheckout, loadCustomers]);
+
+  useEffect(() => {
+    if (!showCheckout) return;
+    if (customerSearchDebounceRef.current) {
+      clearTimeout(customerSearchDebounceRef.current);
+    }
+    customerSearchDebounceRef.current = setTimeout(() => {
+      loadCustomers(customerSearchTerm);
+    }, 350);
+    return () => {
+      if (customerSearchDebounceRef.current) {
+        clearTimeout(customerSearchDebounceRef.current);
+        customerSearchDebounceRef.current = null;
+      }
+    };
+  }, [customerSearchTerm, loadCustomers, showCheckout]);
+
+  const handleSelectCustomer = (customer) => {
+    if (!customer) return;
+    setCustomerData({
+      id: customer.id ?? null,
+      name: customer.name ?? '',
+      email: customer.email ?? '',
+      phone: customer.phone ?? '',
+    });
+    setCustomerSearchTerm(customer.name || customer.email || '');
+    setCustomerLookupError(null);
+  };
+
+  const openCustomerCreator = () => {
+    setShowCustomerCreator(true);
+    setCreateCustomerError(null);
+    setNewCustomerData({
+      name: '',
+      email: '',
+      phone: '',
+    });
+  };
+
+  const closeCustomerCreator = () => {
+    if (creatingCustomer) return;
+    setShowCustomerCreator(false);
+    setCreateCustomerError(null);
+    setNewCustomerData({ name: '', email: '', phone: '' });
+  };
+
+  const handleCreateCustomer = () => {
+    const name = sanitizeField(newCustomerData.name);
+    const email = sanitizeField(newCustomerData.email);
+    const phone = sanitizeField(newCustomerData.phone);
+
+    if (!name) {
+      setCreateCustomerError('El nombre es obligatorio.');
+      return;
+    }
+
+    setCreatingCustomer(true);
+    setCreateCustomerError(null);
+
+    const record = makeCustomerRecord({
+      id: `local-${Date.now()}`,
+      name,
+      email,
+      phone,
+      source: 'local',
+      createdAt: new Date().toISOString(),
+    });
+
+    setLocalCustomers((prev) => {
+      const next = [record, ...prev];
+      const dedup = new Set();
+      const result = [];
+      for (const entry of next) {
+        if (!entry || !entry.key) continue;
+        if (dedup.has(entry.key)) continue;
+        dedup.add(entry.key);
+        result.push(entry);
+      }
+      return result;
+    });
+
+    setCustomerResults((prev) => {
+      const next = [record, ...(Array.isArray(prev) ? prev : [])];
+      const dedup = new Set();
+      const result = [];
+      for (const entry of next) {
+        if (!entry || !entry.key) continue;
+        if (dedup.has(entry.key)) continue;
+        dedup.add(entry.key);
+        result.push(entry);
+      }
+      return result;
+    });
+
+    setCustomerData({
+      id: record.id,
+      name: record.name,
+      email: record.email,
+      phone: record.phone,
+    });
+    setCustomerSearchTerm(record.name || record.email || record.phone);
+    setShowCustomerCreator(false);
+    setNewCustomerData({ name: '', email: '', phone: '' });
+    setCreatingCustomer(false);
+  };
 
   const processSale = async () => {
     if (cart.length === 0) return;
@@ -224,7 +513,7 @@ function Catalog() {
       }
 
       const totalAmount = getCartTotal();
-      const notes = { paymentMethod, customerData };
+      const notes = { paymentMethod, customerData: { ...customerData } };
       const salePayload = {
         employeeId: state.user.id,
         items: cart.map((item) => ({
@@ -266,7 +555,7 @@ function Catalog() {
         items: cart,
         total: totalAmount,
         paymentMethod,
-        customerData,
+        customerData: { ...customerData },
         date: saleResult?.saleDate ? new Date(saleResult.saleDate) : new Date(),
         seller: (state.user && state.user.email) || "Usuario",
       };
@@ -1116,186 +1405,265 @@ function Catalog() {
 
       {/* Modal de checkout */}
       {showCheckout && (
-        <div style={{
-          position: 'absolute',
-          top: '50%',
-          left: '50%',
-          transform: 'translate(-50%, -50%)',
-          width: '500px',
-          background: '#fff',
-          border: '2px solid #316ac5',
-          borderRadius: '8px',
-          boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
-          zIndex: 1001,
-          fontFamily: 'Tahoma, Arial, sans-serif'
-        }}>
-          {/* Header del checkout */}
-          <div style={{
-            background: 'linear-gradient(to right, #316ac5 0%, #4a7bc8 100%)',
-            color: 'white',
-            padding: '12px 16px',
-            borderRadius: '6px 6px 0 0',
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(0,0,0,0.35)',
             display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center'
-          }}>
-            <h3 style={{ margin: 0, fontSize: '14px', fontWeight: 'bold' }}>💳 Finalizar Compra</h3>
-            <button 
-              onClick={() => setShowCheckout(false)}
-              style={{
-                background: 'transparent',
-                border: 'none',
-                color: 'white',
-                fontSize: '16px',
-                cursor: 'pointer',
-                padding: '4px 8px'
-              }}
-            >
-              ✕
-            </button>
-          </div>
-
-          {/* Contenido del checkout */}
-          <div style={{ padding: '16px' }}>
-            {/* Datos del cliente */}
-            <div style={{ marginBottom: '16px' }}>
-              <h4 style={{ margin: '0 0 8px 0', fontSize: '12px', color: '#333' }}>Datos del Cliente</h4>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                <input 
-                  type="text"
-                  placeholder="Nombre completo"
-                  value={customerData.name}
-                  onChange={(e) => setCustomerData({...customerData, name: e.target.value})}
-                  style={{
-                    padding: '8px',
-                    border: '1px solid #999',
-                    borderRadius: '3px',
-                    fontSize: '12px',
-                    fontFamily: 'Tahoma, Arial, sans-serif'
-                  }}
-                />
-                <input 
-                  type="email"
-                  placeholder="Email"
-                  value={customerData.email}
-                  onChange={(e) => setCustomerData({...customerData, email: e.target.value})}
-                  style={{
-                    padding: '8px',
-                    border: '1px solid #999',
-                    borderRadius: '3px',
-                    fontSize: '12px',
-                    fontFamily: 'Tahoma, Arial, sans-serif'
-                  }}
-                />
-                <input 
-                  type="tel"
-                  placeholder="Teléfono"
-                  value={customerData.phone}
-                  onChange={(e) => setCustomerData({...customerData, phone: e.target.value})}
-                  style={{
-                    padding: '8px',
-                    border: '1px solid #999',
-                    borderRadius: '3px',
-                    fontSize: '12px',
-                    fontFamily: 'Tahoma, Arial, sans-serif'
-                  }}
-                />
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: 16,
+            zIndex: 1200,
+          }}
+        >
+          <div className="window" style={{ width: 520, maxWidth: '100%' }}>
+            <div className="title-bar">
+              <div className="title-bar-text">Finalizar venta</div>
+              <div className="title-bar-controls">
+                <button type="button" aria-label="Minimize" disabled />
+                <button type="button" aria-label="Maximize" disabled />
+                <button type="button" aria-label="Close" onClick={() => setShowCheckout(false)} />
               </div>
             </div>
-
-            {/* Método de pago */}
-            <div style={{ marginBottom: '16px' }}>
-              <h4 style={{ margin: '0 0 8px 0', fontSize: '12px', color: '#333' }}>Método de Pago</h4>
-              <select 
-                value={paymentMethod}
-                onChange={(e) => setPaymentMethod(e.target.value)}
-                style={{
-                  width: '100%',
-                  padding: '8px',
-                  border: '1px solid #999',
-                  borderRadius: '3px',
-                  fontSize: '12px',
-                  fontFamily: 'Tahoma, Arial, sans-serif'
-                }}
-              >
-                <option value="">Seleccionar método de pago</option>
-                <option value="efectivo">💵 Efectivo</option>
-                <option value="tarjeta">💳 Tarjeta de Crédito/Débito</option>
-                <option value="transferencia">🏦 Transferencia Bancaria</option>
-              </select>
-            </div>
-
-            {/* Resumen de la compra */}
-            <div style={{ 
-              background: '#f0f0f0',
-              border: '1px solid #999',
-              borderRadius: '4px',
-              padding: '12px',
-              marginBottom: '16px'
-            }}>
-              <h4 style={{ margin: '0 0 8px 0', fontSize: '12px', color: '#333' }}>Resumen de la Compra</h4>
-              {cart.map(item => (
-                <div key={item.id} style={{ 
-                  display: 'flex', 
-                  justifyContent: 'space-between',
-                  fontSize: '11px',
-                  marginBottom: '4px'
-                }}>
-                  <span>{item.name} x{item.quantity}</span>
-                  <span>${(item.price * item.quantity).toFixed(2)}</span>
+            <div className="window-body" style={{ padding: 12 }}>
+              <fieldset className="field-row-stacked" style={{ marginBottom: 12 }}>
+                <legend>Cliente</legend>
+                <div className="field-row" style={{ alignItems: 'center', gap: 8 }}>
+                  <input
+                    id="checkout-customer-search"
+                    className="text-box"
+                    type="text"
+                    placeholder={supabase ? 'Buscar por nombre o email' : 'Inicia sesión para buscar clientes'}
+                    value={customerSearchTerm}
+                    onChange={(e) => setCustomerSearchTerm(e.target.value)}
+                    disabled={!supabase}
+                    style={{ flex: 1 }}
+                  />
+                  <button
+                    type="button"
+                    className="button"
+                    onClick={openCustomerCreator}
+                    disabled={!supabase}
+                  >
+                    Nuevo...
+                  </button>
                 </div>
-              ))}
-              <div style={{ 
-                borderTop: '1px solid #999',
-                paddingTop: '8px',
-                marginTop: '8px',
-                display: 'flex',
-                justifyContent: 'space-between',
-                fontWeight: 'bold'
-              }}>
-                <span>Total:</span>
-                <span>${getCartTotal().toFixed(2)}</span>
+                {customerLookupLoading && (
+                  <div className="status-bar" style={{ marginTop: 6 }}>
+                    <p className="status-bar-text">Buscando clientes...</p>
+                  </div>
+                )}
+                {customerLookupError && (
+                  <div className="status-bar" style={{ marginTop: 6 }}>
+                    <p className="status-bar-text" style={{ color: '#a60000' }}>{customerLookupError}</p>
+                  </div>
+                )}
+                {supabase && !customerLookupLoading && customerResults.length === 0 && !customerLookupError && (
+                  <div className="status-bar" style={{ marginTop: 6 }}>
+                    <p className="status-bar-text">No se encontraron clientes. Puedes crear uno nuevo.</p>
+                  </div>
+                )}
+                {customerResults.length > 0 && (
+                  <div
+                    style={{
+                      marginTop: 6,
+                      border: '1px solid #9aa5c4',
+                      background: '#fff',
+                      maxHeight: 150,
+                      overflowY: 'auto',
+                    }}
+                  >
+                    {customerResults.map((cust) => {
+                      const isActive = Boolean(customerData.id) && cust.id === customerData.id;
+                      return (
+                        <button
+                          key={cust.id || `${cust.email}-${cust.phone}`}
+                          type="button"
+                          className="button"
+                          onClick={() => handleSelectCustomer(cust)}
+                          style={{
+                            display: 'block',
+                            width: '100%',
+                            background: isActive ? 'linear-gradient(#c5d7ff, #8cb3ff)' : 'transparent',
+                            color: '#000',
+                            textAlign: 'left',
+                            border: 'none',
+                            borderBottom: '1px solid #d6d6d6',
+                            borderRadius: 0,
+                            padding: '6px 8px',
+                            fontSize: 12,
+                          }}
+                        >
+                          <div style={{ fontWeight: 'bold' }}>{cust.name || 'Sin nombre'}</div>
+                          <div style={{ fontSize: 11, color: '#333' }}>{cust.email || 'Sin correo'}</div>
+                          {cust.phone && (
+                            <div style={{ fontSize: 11, color: '#555' }}>Tel: {cust.phone}</div>
+                          )}
+                          {cust.source === 'local' ? (
+                            <div style={{ fontSize: 10, color: '#7a5a00' }}>Sincroniza al guardar la venta</div>
+                          ) : (
+                            <div style={{ fontSize: 10, color: '#2e5cb8' }}>Registrado en Supabase</div>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+                {customerData.id && (
+                  <div
+                    style={{
+                      marginTop: 8,
+                      padding: 8,
+                      border: '1px solid #9aa5c4',
+                      background: '#eef3ff',
+                    }}
+                  >
+                    <div style={{ fontWeight: 'bold' }}>{customerData.name}</div>
+                    <div style={{ fontSize: 12 }}>{customerData.email || 'Sin correo'}</div>
+                    <div style={{ fontSize: 12 }}>{customerData.phone || 'Sin teléfono'}</div>
+                  </div>
+                )}
+              </fieldset>
+              <fieldset className="field-row-stacked" style={{ marginBottom: 12 }}>
+                <legend>Método de pago</legend>
+                <select
+                  className="select"
+                  value={paymentMethod}
+                  onChange={(e) => setPaymentMethod(e.target.value)}
+                  style={{ width: '100%' }}
+                >
+                  <option value="">Seleccionar método de pago</option>
+                  <option value="efectivo">Efectivo</option>
+                  <option value="tarjeta">Tarjeta</option>
+                  <option value="transferencia">Transferencia bancaria</option>
+                </select>
+              </fieldset>
+              <fieldset className="field-row-stacked" style={{ marginBottom: 12 }}>
+                <legend>Resumen</legend>
+                <div style={{ maxHeight: 140, overflowY: 'auto', paddingRight: 4 }}>
+                  {cart.map((item) => (
+                    <div
+                      key={item.id}
+                      style={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        fontSize: 11,
+                        padding: '2px 0',
+                      }}
+                    >
+                      <span>{item.name} x{item.quantity}</span>
+                      <span>${(item.price * item.quantity).toFixed(2)}</span>
+                    </div>
+                  ))}
+                </div>
+                <div
+                  style={{
+                    borderTop: '1px solid #9aa5c4',
+                    marginTop: 8,
+                    paddingTop: 8,
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    fontWeight: 'bold',
+                  }}
+                >
+                  <span>Total</span>
+                  <span>${getCartTotal().toFixed(2)}</span>
+                </div>
+              </fieldset>
+              <div className="field-row" style={{ justifyContent: 'flex-end', gap: 8 }}>
+                <button type="button" className="button" onClick={() => setShowCheckout(false)}>
+                  Volver
+                </button>
+                <button
+                  type="button"
+                  className="button"
+                  onClick={processSale}
+                  disabled={!paymentMethod || !customerData.name}
+                  style={{ fontWeight: 'bold' }}
+                >
+                  Confirmar venta
+                </button>
               </div>
             </div>
+          </div>
+        </div>
+      )}
 
-            {/* Botones de acción */}
-            <div style={{ display: 'flex', gap: '8px' }}>
-              <button 
-                onClick={() => setShowCheckout(false)}
-                style={{
-                  flex: 1,
-                  padding: '10px',
-                  background: 'linear-gradient(to bottom, #f0f0f0 0%, #d0d0d0 100%)',
-                  border: '1px solid #999',
-                  borderRadius: '4px',
-                  color: '#000',
-                  fontSize: '12px',
-                  fontWeight: 'bold',
-                  cursor: 'pointer'
-                }}
-              >
-                ← Volver
-              </button>
-              <button 
-                onClick={processSale}
-                disabled={!paymentMethod || !customerData.name}
-                style={{
-                  flex: 2,
-                  padding: '10px',
-                  background: paymentMethod && customerData.name 
-                    ? 'linear-gradient(to bottom, #4CAF50 0%, #45a049 100%)'
-                    : 'linear-gradient(to bottom, #ccc 0%, #bbb 100%)',
-                  border: '1px solid #2e7d32',
-                  borderRadius: '4px',
-                  color: 'white',
-                  fontSize: '12px',
-                  fontWeight: 'bold',
-                  cursor: paymentMethod && customerData.name ? 'pointer' : 'not-allowed',
-                  opacity: paymentMethod && customerData.name ? 1 : 0.6
-                }}
-              >
-                ✅ Confirmar Venta
-              </button>
+      {showCustomerCreator && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(0,0,0,0.45)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: 16,
+            zIndex: 1300,
+          }}
+        >
+          <div className="window" style={{ width: 360, maxWidth: '100%' }}>
+            <div className="title-bar">
+              <div className="title-bar-text">Nuevo cliente</div>
+              <div className="title-bar-controls">
+                <button type="button" aria-label="Minimize" disabled />
+                <button type="button" aria-label="Maximize" disabled />
+                <button type="button" aria-label="Close" onClick={closeCustomerCreator} />
+              </div>
+            </div>
+            <div className="window-body" style={{ padding: 12, display: 'flex', flexDirection: 'column', gap: 8 }}>
+              <div className="field-row-stacked">
+                <label htmlFor="new-customer-name">Nombre y apellido</label>
+                <input
+                  id="new-customer-name"
+                  className="text-box"
+                  type="text"
+                  value={newCustomerData.name}
+                  onChange={(e) => setNewCustomerData({ ...newCustomerData, name: e.target.value })}
+                  disabled={creatingCustomer}
+                />
+              </div>
+              <div className="field-row-stacked">
+                <label htmlFor="new-customer-email">Correo electrónico</label>
+                <input
+                  id="new-customer-email"
+                  className="text-box"
+                  type="email"
+                  value={newCustomerData.email}
+                  onChange={(e) => setNewCustomerData({ ...newCustomerData, email: e.target.value })}
+                  disabled={creatingCustomer}
+                />
+              </div>
+              <div className="field-row-stacked">
+                <label htmlFor="new-customer-phone">Teléfono</label>
+                <input
+                  id="new-customer-phone"
+                  className="text-box"
+                  type="tel"
+                  value={newCustomerData.phone}
+                  onChange={(e) => setNewCustomerData({ ...newCustomerData, phone: e.target.value })}
+                  disabled={creatingCustomer}
+                />
+              </div>
+              {createCustomerError && (
+                <div className="status-bar">
+                  <p className="status-bar-text" style={{ color: '#a60000' }}>{createCustomerError}</p>
+                </div>
+              )}
+              <div className="field-row" style={{ justifyContent: 'flex-end', gap: 8 }}>
+                <button type="button" className="button" onClick={closeCustomerCreator} disabled={creatingCustomer}>
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  className="button"
+                  onClick={handleCreateCustomer}
+                  disabled={creatingCustomer}
+                >
+                  {creatingCustomer ? 'Guardando...' : 'Guardar'}
+                </button>
+              </div>
             </div>
           </div>
         </div>
