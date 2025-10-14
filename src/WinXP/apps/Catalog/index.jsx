@@ -10,7 +10,7 @@ import dropdown from 'assets/windowsIcons/dropdown.png';
 import pullup from 'assets/windowsIcons/pullup.png';
 import windows from 'assets/windowsIcons/windows.png';
 import { WindowDropDowns } from 'components';
-import { fetchBrands, fetchProducts, fetchProductsByIds, updateProductStock, createSale } from 'lib/apiClient';
+import { fetchBrands, fetchProducts, fetchProductsByIds, updateProductStock, createSale, createClient } from 'lib/apiClient';
 import mcDropDownData from 'WinXP/apps/MyComputer/dropDownData';
 import back from 'assets/windowsIcons/back.png';
 import forward from 'assets/windowsIcons/forward.png';
@@ -128,6 +128,8 @@ function Catalog() {
   const [newCustomerData, setNewCustomerData] = useState({ name: '', email: '', phone: '' });
   const [creatingCustomer, setCreatingCustomer] = useState(false);
   const [createCustomerError, setCreateCustomerError] = useState(null);
+  const [showErrorModal, setShowErrorModal] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
   const customerSearchDebounceRef = React.useRef(null);
   const [localCustomers, setLocalCustomers] = useState(() => {
     if (typeof window === 'undefined') return [];
@@ -290,29 +292,18 @@ function Catalog() {
       setCustomerLookupLoading(true);
       try {
         const { data, error } = await supabase
-          .from('sales')
-          .select('id, notes, created_at')
+          .from('clients')
+          .select('id, first_name, last_name, email, phone, created_at')
           .order('created_at', { ascending: false })
           .limit(400);
         if (error) throw error;
         const seen = new Set();
         for (const row of data || []) {
-          let notes = row?.notes;
-          if (!notes) continue;
-          if (typeof notes === 'string') {
-            try {
-              notes = JSON.parse(notes);
-            } catch (_e) {
-              continue;
-            }
-          }
-          const info = notes?.customerData || notes?.customer || null;
-          if (!info) continue;
           const candidate = makeCustomerRecord({
-            id: row?.id ? `sale-${row.id}` : undefined,
-            name: info.name,
-            email: info.email,
-            phone: info.phone,
+            id: row?.id || undefined,
+            name: `${row?.first_name || ''} ${row?.last_name || ''}`.trim(),
+            email: row?.email || '',
+            phone: row?.phone || '',
             createdAt: row?.created_at || null,
             source: 'supabase',
           });
@@ -424,7 +415,7 @@ function Catalog() {
     setNewCustomerData({ name: '', email: '', phone: '' });
   };
 
-  const handleCreateCustomer = () => {
+  const handleCreateCustomer = async () => {
     const name = sanitizeField(newCustomerData.name);
     const email = sanitizeField(newCustomerData.email);
     const phone = sanitizeField(newCustomerData.phone);
@@ -434,30 +425,51 @@ function Catalog() {
       return;
     }
 
+    if (!email) {
+      setCreateCustomerError('El email es obligatorio.');
+      return;
+    }
+
     setCreatingCustomer(true);
     setCreateCustomerError(null);
 
-    const record = makeCustomerRecord({
-      id: `local-${Date.now()}`,
-      name,
-      email,
-      phone,
-      source: 'local',
-      createdAt: new Date().toISOString(),
-    });
+    try {
+      // Separar nombre y apellido
+      const nameParts = name.trim().split(/\s+/);
+      const firstName = nameParts[0];
+      const lastName = nameParts.slice(1).join(' ') || firstName;
 
-    setLocalCustomers((prev) => {
-      const next = [record, ...prev];
-      const dedup = new Set();
-      const result = [];
-      for (const entry of next) {
-        if (!entry || !entry.key) continue;
-        if (dedup.has(entry.key)) continue;
-        dedup.add(entry.key);
-        result.push(entry);
-      }
-      return result;
-    });
+      // Llamar al endpoint del backend
+      const data = await createClient({
+        firstName,
+        lastName,
+        email,
+        phone: phone || null,
+      });
+
+      // Crear el registro con el ID real de la base de datos
+      const record = makeCustomerRecord({
+        id: data.id,
+        name: `${data.firstName} ${data.lastName}`.trim(),
+        email: data.email,
+        phone: data.phone || '',
+        source: 'supabase',
+        createdAt: data.createdAt,
+      });
+
+      // Agregar a la lista local para que aparezca inmediatamente
+      setLocalCustomers((prev) => {
+        const next = [record, ...prev];
+        const dedup = new Set();
+        const result = [];
+        for (const entry of next) {
+          if (!entry || !entry.key) continue;
+          if (dedup.has(entry.key)) continue;
+          dedup.add(entry.key);
+          result.push(entry);
+        }
+        return result;
+      });
 
     setCustomerResults((prev) => {
       const next = [record, ...(Array.isArray(prev) ? prev : [])];
@@ -472,16 +484,41 @@ function Catalog() {
       return result;
     });
 
-    setCustomerData({
-      id: record.id,
-      name: record.name,
-      email: record.email,
-      phone: record.phone,
-    });
-    setCustomerSearchTerm(record.name || record.email || record.phone);
-    setShowCustomerCreator(false);
-    setNewCustomerData({ name: '', email: '', phone: '' });
-    setCreatingCustomer(false);
+      setCustomerData({
+        id: record.id,
+        name: record.name,
+        email: record.email,
+        phone: record.phone,
+      });
+      setCustomerSearchTerm(record.name || record.email || record.phone);
+      setShowCustomerCreator(false);
+      setNewCustomerData({ name: '', email: '', phone: '' });
+    } catch (error) {
+      console.error('Error al crear cliente:', error);
+      
+      // Manejar errores del backend
+      let errorMessage = 'No se pudo crear el cliente.';
+      
+      if (error.body?.message) {
+        // Error estructurado del backend
+        if (Array.isArray(error.body.message)) {
+          errorMessage = error.body.message[0];
+        } else {
+          errorMessage = error.body.message;
+        }
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
+      // Detectar error de email duplicado
+      if (errorMessage.includes('duplicate') || errorMessage.includes('unique') || errorMessage.includes('already exists')) {
+        errorMessage = 'Ya existe un cliente con ese email.';
+      }
+      
+      setCreateCustomerError(errorMessage);
+    } finally {
+      setCreatingCustomer(false);
+    }
   };
 
   const processSale = async () => {
@@ -516,6 +553,8 @@ function Catalog() {
       const notes = { paymentMethod, customerData: { ...customerData } };
       const salePayload = {
         employeeId: state.user.id,
+        customerId: customerData.id || null,
+        customerName: customerData.name || customerData.fullName || null,
         items: cart.map((item) => ({
           productId: item.id,
           quantity: Number(item.quantity || 1),
@@ -568,7 +607,27 @@ function Catalog() {
 
       clearCart();
     } catch (error) {
-      console.error('¿ Error al procesar la venta:', error);
+      console.error('Error al procesar la venta:', error);
+      
+      // Cerrar la ventana de checkout
+      setShowCheckout(false);
+      
+      // Construir mensaje de error detallado
+      let errorMsg = 'No se pudo procesar la venta.';
+      
+      if (error.message) {
+        errorMsg = error.message;
+      } else if (error.body?.message) {
+        if (Array.isArray(error.body.message)) {
+          errorMsg = error.body.message.join('\n');
+        } else {
+          errorMsg = error.body.message;
+        }
+      }
+      
+      // Mostrar modal de error
+      setErrorMessage(errorMsg);
+      setShowErrorModal(true);
     }
   };
 
@@ -1826,6 +1885,130 @@ function Catalog() {
                 }}
               >
                 ✅ Aceptar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Error */}
+      {showErrorModal && (
+        <div style={{
+          position: 'absolute',
+          top: '50%',
+          left: '50%',
+          transform: 'translate(-50%, -50%)',
+          width: '400px',
+          background: '#f0f0f0',
+          border: '2px outset #f0f0f0',
+          borderRadius: '0',
+          boxShadow: '2px 2px 4px rgba(0,0,0,0.3)',
+          zIndex: 1002,
+          fontFamily: 'Tahoma, Arial, sans-serif'
+        }}>
+          {/* Header del modal de error */}
+          <div style={{
+            background: 'linear-gradient(to bottom, #d32f2f 0%, #b71c1c 100%)',
+            color: 'white',
+            padding: '8px 12px',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            borderBottom: '1px solid #b71c1c'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span style={{ fontSize: '16px' }}>❌</span>
+              <span style={{ fontSize: '12px', fontWeight: 'bold' }}>Error al Procesar Venta</span>
+            </div>
+            <button 
+              onClick={() => setShowErrorModal(false)}
+              style={{
+                background: 'transparent',
+                border: 'none',
+                color: 'white',
+                fontSize: '14px',
+                cursor: 'pointer',
+                padding: '2px 6px',
+                borderRadius: '2px'
+              }}
+              onMouseOver={(e) => e.target.style.background = 'rgba(255,255,255,0.2)'}
+              onMouseOut={(e) => e.target.style.background = 'transparent'}
+            >
+              ✕
+            </button>
+          </div>
+
+          {/* Contenido del modal de error */}
+          <div style={{ padding: '16px' }}>
+            <div style={{ textAlign: 'center', marginBottom: '16px' }}>
+              <div style={{ fontSize: '32px', marginBottom: '8px' }}>⚠️</div>
+              <div style={{ fontSize: '14px', fontWeight: 'bold', color: '#d32f2f', marginBottom: '4px' }}>
+                No se pudo completar la venta
+              </div>
+            </div>
+
+            <div style={{
+              background: '#fff',
+              border: '1px inset #f0f0f0',
+              padding: '12px',
+              marginBottom: '16px',
+              fontSize: '11px',
+              maxHeight: '200px',
+              overflowY: 'auto',
+              whiteSpace: 'pre-wrap',
+              wordBreak: 'break-word'
+            }}>
+              <div style={{ fontWeight: 'bold', marginBottom: '8px', color: '#d32f2f' }}>
+                💬 Detalles del error:
+              </div>
+              <div style={{ color: '#333', lineHeight: '1.4' }}>
+                {errorMessage}
+              </div>
+            </div>
+
+            <div style={{
+              background: '#fffacd',
+              border: '1px solid #ffd700',
+              padding: '8px',
+              marginBottom: '12px',
+              fontSize: '10px',
+              borderRadius: '2px'
+            }}>
+              <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>💡 Sugerencias:</div>
+              <div>• Verifica que todos los productos tengan una línea asignada</div>
+              <div>• Asegúrate de que el cliente esté seleccionado correctamente</div>
+              <div>• Revisa que los datos sean válidos e intenta nuevamente</div>
+            </div>
+
+            {/* Botón de cerrar */}
+            <div style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
+              <button 
+                onClick={() => setShowErrorModal(false)}
+                style={{
+                  padding: '8px 16px',
+                  background: 'linear-gradient(to bottom, #f0f0f0 0%, #d0d0d0 100%)',
+                  border: '1px outset #f0f0f0',
+                  borderRadius: '0',
+                  color: '#000',
+                  fontSize: '11px',
+                  fontWeight: 'bold',
+                  cursor: 'pointer',
+                  fontFamily: 'Tahoma, Arial, sans-serif'
+                }}
+                onMouseDown={(e) => {
+                  e.target.style.background = 'linear-gradient(to bottom, #d0d0d0 0%, #f0f0f0 100%)';
+                  e.target.style.boxShadow = 'inset 0 1px 0 #999, 0 1px 0 #fff';
+                }}
+                onMouseUp={(e) => {
+                  e.target.style.background = 'linear-gradient(to bottom, #f0f0f0 0%, #d0d0d0 100%)';
+                  e.target.style.boxShadow = 'inset 0 1px 0 #fff, 0 1px 0 #999';
+                }}
+                onMouseLeave={(e) => {
+                  e.target.style.background = 'linear-gradient(to bottom, #f0f0f0 0%, #d0d0d0 100%)';
+                  e.target.style.boxShadow = 'inset 0 1px 0 #fff, 0 1px 0 #999';
+                }}
+              >
+                Entendido
               </button>
             </div>
           </div>

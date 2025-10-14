@@ -27,5 +27,5 @@
       "dest": "/index.html"
     }
   ],
-  "alias": ["windowsxp.now.sh", "winxp.now.sh"]
+  "alias": ["winxp.vercel.app"]
 }
