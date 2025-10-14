@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useEffect, useMemo, useReducer, useRef } from 'react';
 import { getSupabaseClient } from 'lib/supabaseClient';
-import { fetchBrands, fetchCategories, fetchProducts } from 'lib/apiClient';
+import { fetchBrands, fetchCategories, fetchProducts, fetchLines } from 'lib/apiClient';
 import startupSound from 'assets/sounds/windows-xp-startup.wav';
 
 const PERSIST_KEY = 'app.state.v1';
@@ -19,6 +19,7 @@ const initialData = {
     minPrice: 0,
     maxPrice: 0,
   },
+  lines: [],
 };
 
 const ACTIONS = {
@@ -34,6 +35,10 @@ const ACTIONS = {
   SET_PRODUCTS: 'SET_PRODUCTS',
   SET_BRANDS: 'SET_BRANDS',
   SET_CATEGORIES: 'SET_CATEGORIES',
+  SET_LINES: 'SET_LINES',
+  ADD_LINE: 'ADD_LINE',
+  UPDATE_LINE: 'UPDATE_LINE',
+  DELETE_LINE: 'DELETE_LINE',
   HYDRATE: 'HYDRATE',
 };
 
@@ -153,6 +158,22 @@ function reducer(state, action) {
       return { ...state, brands: Array.isArray(action.payload) ? action.payload : [] };
     case ACTIONS.SET_CATEGORIES:
       return { ...state, categories: Array.isArray(action.payload) ? action.payload : [] };
+    case ACTIONS.SET_LINES:
+      return { ...state, lines: Array.isArray(action.payload) ? action.payload : [] };
+    case ACTIONS.ADD_LINE:
+      return { ...state, lines: [...state.lines, action.payload] };
+    case ACTIONS.UPDATE_LINE:
+      return {
+        ...state,
+        lines: state.lines.map(line =>
+          line.id === action.payload.id ? action.payload : line
+        ),
+      };
+    case ACTIONS.DELETE_LINE:
+      return {
+        ...state,
+        lines: state.lines.filter(line => line.id !== action.payload),
+      };
     case ACTIONS.SET_CATALOG_FILTERS:
       return { ...state, catalog: { ...state.catalog, ...action.payload } };
     default:
@@ -257,6 +278,7 @@ export function AppStateProvider({ children }) {
       dispatch({ type: ACTIONS.SET_BRANDS, payload: [] });
       dispatch({ type: ACTIONS.SET_PRODUCTS, payload: [] });
       dispatch({ type: ACTIONS.SET_CATEGORIES, payload: [] });
+      dispatch({ type: ACTIONS.SET_LINES, payload: [] });
       return;
     }
 
@@ -264,10 +286,11 @@ export function AppStateProvider({ children }) {
 
     (async () => {
       try {
-        const [brands, categories, products] = await Promise.all([
+        const [brands, categories, products, lines] = await Promise.all([
           fetchBrands().catch(() => null),
           fetchCategories().catch(() => null),
           fetchProducts().catch(() => null),
+          fetchLines().catch(() => null),
         ]);
 
         if (!cancelled && Array.isArray(brands)) {
@@ -292,6 +315,17 @@ export function AppStateProvider({ children }) {
           dispatch({ type: ACTIONS.SET_CATEGORIES, payload: normalizedCategories });
         }
 
+        if (!cancelled && Array.isArray(lines)) {
+          const normalizedLines = lines.map((line) => ({
+            id: line?.id ?? null,
+            name: line?.name ?? '',
+            description: line?.description ?? '',
+            brandId: line?.brand_id ?? line?.brandId ?? null,
+            createdBy: line?.created_by ?? line?.createdBy ?? null,
+          }));
+          dispatch({ type: ACTIONS.SET_LINES, payload: normalizedLines });
+        }
+
         if (!cancelled && Array.isArray(products)) {
           const normalizedProducts = products.map((product) => ({
             id: product?.id ?? null,
@@ -299,6 +333,7 @@ export function AppStateProvider({ children }) {
             description: product?.description ?? '',
             category: product?.category ?? 'general',
             brandId: product?.brandId ?? product?.brand_id ?? '',
+            lineId: product?.lineId ?? product?.line_id ?? '',
             price: Number(product?.price ?? 0),
             image: product?.image ?? '',
             stock_quantity: Number(product?.stockQuantity ?? product?.stock_quantity ?? 0),
@@ -312,6 +347,7 @@ export function AppStateProvider({ children }) {
           dispatch({ type: ACTIONS.SET_BRANDS, payload: [] });
           dispatch({ type: ACTIONS.SET_PRODUCTS, payload: [] });
           dispatch({ type: ACTIONS.SET_CATEGORIES, payload: [] });
+          dispatch({ type: ACTIONS.SET_LINES, payload: [] });
         }
       }
     })();

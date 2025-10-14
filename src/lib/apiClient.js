@@ -92,9 +92,10 @@ const mapProduct = (raw) => ({
   userId: raw?.userId ?? raw?.user_id ?? null,
   brandId: raw?.brandId ?? raw?.brand_id ?? '',
   lineId: raw?.lineId ?? raw?.line_id ?? null,
+  categoryId: raw?.categoryId ?? raw?.category_id ?? null,
   name: raw?.name ?? '',
   description: raw?.description ?? '',
-  category: raw?.category ?? 'general',
+  category: raw?.category?.name ?? raw?.category ?? 'general',
   price: Number(raw?.price ?? 0),
   image: raw?.image ?? '',
   stockQuantity: Number(raw?.stockQuantity ?? raw?.stock_quantity ?? 0),
@@ -104,6 +105,8 @@ const mapProduct = (raw) => ({
 const mapSale = (raw) => ({
   id: raw?.id ?? null,
   employeeId: raw?.employeeId ?? raw?.employee_id ?? null,
+  customerId: raw?.clientId ?? raw?.client_id ?? null,
+  customerName: raw?.customerName ?? raw?.customer_name ?? null,
   totalAmount: Number(raw?.totalAmount ?? raw?.total_amount ?? 0),
   saleDate: raw?.saleDate ?? raw?.sale_date ?? null,
   notes: raw?.notes ?? null,
@@ -118,6 +121,11 @@ export async function fetchBrands() {
 export async function fetchCategories() {
   const data = await apiFetch('/api/categories');
   return Array.isArray(data) ? data.map(mapCategory) : [];
+}
+
+export async function fetchLines() {
+  const data = await apiFetch('/api/lines');
+  return Array.isArray(data) ? data : [];
 }
 
 export async function fetchProducts() {
@@ -138,12 +146,34 @@ export async function saveBrand(payload) {
   return mapBrand(result || { ...body, id: payload.id });
 }
 
+export async function checkLineExists(name, brandId) {
+  const response = await apiFetch(
+    `/api/lines/check/name?name=${encodeURIComponent(name)}&brandId=${brandId}`
+  );
+  return response?.exists ?? false;
+}
+
+export async function saveLine(payload) {
+  const body = {
+    name: payload.name,
+    brandId: payload.brandId,
+  };
+  
+  // Solo incluir description si existe
+  if (payload.description) {
+    body.description = payload.description;
+  }
+  
+  const endpoint = payload.id ? `/api/lines/${payload.id}` : '/api/lines';
+  const method = payload.id ? 'PUT' : 'POST';
+  const result = await apiFetch(endpoint, { method, body });
+  return result?.id;
+}
+
 export async function saveCategory(payload) {
   const body = {
     name: payload.name,
     description: payload.description ?? '',
-    slug: payload.slug ?? null,
-    userId: payload.userId,
   };
   const endpoint = payload.id ? `/api/categories/${payload.id}` : '/api/categories';
   const method = payload.id ? 'PUT' : 'POST';
@@ -159,6 +189,10 @@ export async function deleteCategory(id) {
   await apiFetch(`/api/categories/${id}`, { method: 'DELETE' });
 }
 
+export async function deleteLine(id) {
+  await apiFetch(`/api/lines/${id}`, { method: 'DELETE' });
+}
+
 export async function saveProduct(payload) {
   const body = {
     userId: payload.userId,
@@ -166,12 +200,19 @@ export async function saveProduct(payload) {
     lineId: payload.lineId ?? null,
     name: payload.name,
     description: payload.description ?? '',
-    category: payload.category ?? 'general',
     price: Number(payload.price ?? 0),
     image: payload.image ?? '',
     stockQuantity: Number(payload.stockQuantity ?? 0),
     minStock: Number(payload.minStock ?? 0),
   };
+  
+  // Si existe categoryId, usarlo. Si no, usar newCategory para crear una nueva
+  if (payload.categoryId) {
+    body.categoryId = payload.categoryId;
+  } else if (payload.newCategory) {
+    body.newCategory = payload.newCategory;
+  }
+  
   const endpoint = payload.id ? `/api/products/${payload.id}` : '/api/products';
   const method = payload.id ? 'PUT' : 'POST';
   const result = await apiFetch(endpoint, { method, body });
@@ -196,6 +237,12 @@ export async function updateSale(id, payload) {
     notes: payload.notes ?? null,
     items: payload.items ?? undefined,
   };
+  
+  // Solo incluir clientId si es un UUID válido (no es un ID local)
+  if (payload.customerId && !payload.customerId.startsWith('local-')) {
+    body.clientId = payload.customerId;
+  }
+  
   const result = await apiFetch(`/api/sales/${id}`, { method: 'PUT', body });
   return mapSale(result || { id, ...body });
 }
@@ -207,6 +254,17 @@ export async function deleteSale(id) {
 export async function fetchLowStockProducts() {
   const data = await apiFetch('/api/products/low-stock');
   return Array.isArray(data) ? data.map(mapProduct) : [];
+}
+
+export async function createClient(payload) {
+  const body = {
+    firstName: payload.firstName,
+    lastName: payload.lastName,
+    email: payload.email,
+    phone: payload.phone || null,
+  };
+  const data = await apiFetch('/api/clients', { method: 'POST', body });
+  return data;
 }
 
 export { mapBrand, mapCategory, mapProduct, mapSale };
@@ -225,10 +283,31 @@ export async function fetchProductsByIds(ids) {
 }
 
 export async function updateProductStock(id, stockQuantity, minStock) {
-  const body = { stockQuantity: Number(stockQuantity ?? 0) };
-  if (minStock !== undefined) {
-    body.minStock = Number(minStock);
+  // Primero obtenemos el producto completo
+  const product = await apiFetch(`/api/products/${id}`);
+  if (!product) return null;
+  
+  // Verificar si el producto tiene lineId (ahora es requerido por el backend)
+  const lineId = product.line_id || product.lineId;
+  if (!lineId) {
+    console.error(`El producto ${product.name} (${id}) no tiene lineId asignado. No se puede actualizar el stock.`);
+    throw new Error(`El producto "${product.name}" no tiene una línea asignada. Por favor, asigna una línea antes de realizar ventas.`);
   }
+  
+  // Ahora actualizamos con todos los campos requeridos
+  const body = {
+    userId: product.user_id || product.userId,
+    brandId: product.brand_id || product.brandId,
+    lineId: lineId,
+    categoryId: product.category_id || product.categoryId || null,
+    name: product.name,
+    description: product.description || '',
+    price: Number(product.price || 0),
+    image: product.image || '',
+    stockQuantity: Number(stockQuantity ?? 0),
+    minStock: Number(minStock ?? 0),
+  };
+  
   const data = await apiFetch(`/api/products/${id}`, { method: 'PUT', body });
   return data ? mapProduct(data) : null;
 }
@@ -241,6 +320,12 @@ export async function createSale(payload) {
     saleDate: payload.saleDate,
     notes: payload.notes ?? null,
   };
+  
+  // Solo incluir clientId si es un UUID válido (no es un ID local)
+  if (payload.customerId && !payload.customerId.startsWith('local-')) {
+    body.clientId = payload.customerId;
+  }
+  
   const data = await apiFetch('/api/sales', { method: 'POST', body });
   return data ? mapSale(data) : null;
 }

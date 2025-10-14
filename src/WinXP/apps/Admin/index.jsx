@@ -11,7 +11,7 @@ import dropdown from 'assets/windowsIcons/dropdown.png';
 import pullup from 'assets/windowsIcons/pullup.png';
 import windows from 'assets/windowsIcons/windows.png';
 import { WindowDropDowns } from 'components';
-import { saveProduct as apiSaveProduct, deleteProduct as apiDeleteProduct, saveBrand as apiSaveBrand, deleteBrand as apiDeleteBrand, saveCategory as apiSaveCategory, fetchSalesByEmployee, updateSale as apiUpdateSale, deleteSale as apiDeleteSale } from 'lib/apiClient';
+import { saveProduct as apiSaveProduct, deleteProduct as apiDeleteProduct, saveBrand as apiSaveBrand, deleteBrand as apiDeleteBrand, saveCategory as apiSaveCategory, fetchSalesByEmployee, updateSale as apiUpdateSale, deleteSale as apiDeleteSale, saveLine as apiSaveLine, deleteLine as apiDeleteLine, checkLineExists as apiCheckLineExists } from 'lib/apiClient';
 import mcDropDownData from 'WinXP/apps/MyComputer/dropDownData';
 import back from 'assets/windowsIcons/back.png';
 import forward from 'assets/windowsIcons/forward.png';
@@ -23,6 +23,7 @@ const PLACEHOLDER_ROLES = new Set(['', 'authenticated', 'anon', 'anonymous', 'us
 const ADMIN_ROLES = new Set(['admin', 'manager']);
 const EMPLOYEE_ROLES = new Set(['empleado', 'employee']);
 const QUICK_CREATE_BRAND_VALUE = '__create_brand__';
+const QUICK_CREATE_LINE_VALUE = '__create_line__';
 const QUICK_CREATE_CATEGORY_VALUE = '__create_category__';
 
 
@@ -170,14 +171,17 @@ function Admin({ defaultTab = 'products', showLauncher = false, openCatalog }) {
       const salesData = await fetchSalesByEmployee(state.user.id);
       const mapped = (salesData || []).map((row) => {
         let paymentMethod = '';
-        let customerName = '';
+        let customerName = row.customerName || '';
         let customerEmail = '';
+        let customerId = row.customerId || null;
+        
         try {
           const notes = typeof row.notes === 'string' ? JSON.parse(row.notes) : row.notes;
           if (notes) {
             paymentMethod = notes.paymentMethod || '';
             if (notes.customerData) {
-              customerName = notes.customerData.name || '';
+              // Usar los datos de notes como fallback si no están en los campos principales
+              if (!customerName) customerName = notes.customerData.name || '';
               customerEmail = notes.customerData.email || '';
             }
           }
@@ -185,12 +189,14 @@ function Admin({ defaultTab = 'products', showLauncher = false, openCatalog }) {
 
         return {
           id: row.id,
+          customerId,
           customerName,
           customerEmail,
           total: Number(row.totalAmount || 0),
           paymentMethod,
           date: row.saleDate ? new Date(row.saleDate) : new Date(),
           seller: state.user && state.user.email ? state.user.email : '',
+          employeeId: row.employeeId || state.user.id,
         };
       });
 
@@ -233,6 +239,8 @@ function Admin({ defaultTab = 'products', showLauncher = false, openCatalog }) {
     try {
       const newNotes = { paymentMethod: editPaymentMethod, customerData: { name: editCustomerName, email: editCustomerEmail } };
       const payload = {
+        customerId: editingSale.customerId || null,
+        customerName: editCustomerName || null,
         totalAmount: Number(editTotal || 0),
         saleDate: editDate ? new Date(editDate).toISOString() : new Date().toISOString(),
         notes: JSON.stringify(newNotes),
@@ -278,13 +286,32 @@ function Admin({ defaultTab = 'products', showLauncher = false, openCatalog }) {
     error: '',
     info: '',
   });
+
+  const [isQuickLineCreating, setIsQuickLineCreating] = useState(false);
+  const [quickLineDialog, setQuickLineDialog] = useState({
+    open: false,
+    name: '',
+    previousValue: '',
+    error: '',
+    info: '',
+  });
+
   const quickBrandInputRef = React.useRef(null);
   const quickBrandCloseTimeoutRef = React.useRef(null);
+  const quickLineInputRef = React.useRef(null);
+  const quickLineCloseTimeoutRef = React.useRef(null);
 
   function clearQuickBrandCloseTimer() {
     if (quickBrandCloseTimeoutRef.current) {
       clearTimeout(quickBrandCloseTimeoutRef.current);
       quickBrandCloseTimeoutRef.current = null;
+    }
+  }
+
+  function clearQuickLineCloseTimer() {
+    if (quickLineCloseTimeoutRef.current) {
+      clearTimeout(quickLineCloseTimeoutRef.current);
+      quickLineCloseTimeoutRef.current = null;
     }
   }
 
@@ -306,6 +333,27 @@ function Admin({ defaultTab = 'products', showLauncher = false, openCatalog }) {
   React.useEffect(() => {
     return () => {
       clearQuickBrandCloseTimer();
+    };
+  }, []);
+
+  React.useEffect(() => {
+    if (!quickLineDialog.open) {
+      return undefined;
+    }
+    const timer = setTimeout(() => {
+      try {
+        if (quickLineInputRef.current) {
+          quickLineInputRef.current.focus();
+          quickLineInputRef.current.select();
+        }
+      } catch (_error) { }
+    }, 60);
+    return () => clearTimeout(timer);
+  }, [quickLineDialog.open]);
+
+  React.useEffect(() => {
+    return () => {
+      clearQuickLineCloseTimer();
     };
   }, []);
 
@@ -386,6 +434,7 @@ function Admin({ defaultTab = 'products', showLauncher = false, openCatalog }) {
   const [pDesc, setPDesc] = useState('');
   const [pCategory, setPCategory] = useState('general');
   const [pBrandId, setPBrandId] = useState('');
+  const [pLineId, setPLineId] = useState('');
   const [pPrice, setPPrice] = useState('0');
   const [pImage, setPImage] = useState('');
   const [pStock, setPStock] = useState('0');
@@ -407,25 +456,34 @@ function Admin({ defaultTab = 'products', showLauncher = false, openCatalog }) {
   const [bLogo, setBLogo] = useState('');
   const [bOriginal, setBOriginal] = useState(null);
 
+  // Líneas
+  const [lineId, setLineId] = useState('');
+  const [lineName, setLineName] = useState('');
+  const [lineDesc, setLineDesc] = useState('');
+  const [lineBrandId, setLineBrandId] = useState('');
+  const [lineOriginal, setLineOriginal] = useState(null);
+  const [showEditLineForm, setShowEditLineForm] = useState(false);
+
   const canSaveProduct = useMemo(() => {
     const price = Number(pPrice);
-    if (!pName || !pBrandId || Number.isNaN(price) || price < 0) return false;
+    if (!pName || !pBrandId || !pLineId || Number.isNaN(price) || price < 0) return false;
     return true;
-  }, [pName, pBrandId, pPrice]);
+  }, [pName, pBrandId, pLineId, pPrice]);
 
   const isProductDirty = useMemo(() => {
-    if (!pOriginal && !pId) return !!(pName || pDesc || pImage || Number(pPrice) > 0 || (pBrandId && pBrandId !== ''));
+    if (!pOriginal && !pId) return !!(pName || pDesc || pImage || Number(pPrice) > 0 || (pBrandId && pBrandId !== '') || (pLineId && pLineId !== ''));
     if (!pOriginal) return true;
     return (
       pName !== pOriginal.name ||
       pDesc !== pOriginal.description ||
       pCategory !== pOriginal.category ||
       pBrandId !== pOriginal.brandId ||
+      pLineId !== pOriginal.lineId ||
       Number(pPrice) !== Number(pOriginal.price) ||
       pImage !== pOriginal.image ||
       Number(pStock) !== Number(pOriginal.stock)
     );
-  }, [pOriginal, pId, pName, pDesc, pCategory, pBrandId, pPrice, pImage, pStock]);
+  }, [pOriginal, pId, pName, pDesc, pCategory, pBrandId, pLineId, pPrice, pImage, pStock]);
 
   const canSubmitProduct = canSaveProduct && isProductDirty;
 
@@ -473,8 +531,22 @@ function Admin({ defaultTab = 'products', showLauncher = false, openCatalog }) {
     return filtered;
   }, [state.brands, searchQuery]);
 
+  // Filtros para líneas
+  const filteredLines = useMemo(() => {
+    let filtered = state.lines;
+
+    if (searchQuery) {
+      filtered = filtered.filter(l =>
+        l.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (l.description && l.description.toLowerCase().includes(searchQuery.toLowerCase()))
+      );
+    }
+
+    return filtered;
+  }, [state.lines, searchQuery]);
+
   function clearProductForm() {
-    setPId(''); setPName(''); setPDesc(''); setPCategory('general'); setPBrandId(''); setPPrice('0'); setPImage(''); setPPreview('');
+    setPId(''); setPName(''); setPDesc(''); setPCategory('general'); setPBrandId(''); setPLineId(''); setPPrice('0'); setPImage(''); setPPreview('');
     setShowNewProductForm(false);
     setPOriginal(null);
   }
@@ -493,6 +565,109 @@ function Admin({ defaultTab = 'products', showLauncher = false, openCatalog }) {
     setBId(''); setBName(''); setBDesc(''); setBLogo('');
     setShowNewBrandForm(false);
     setBOriginal(null);
+  }
+
+  function clearLineForm() {
+    setLineId(''); setLineName(''); setLineDesc(''); setLineBrandId('');
+    setShowEditLineForm(false);
+    setLineOriginal(null);
+  }
+
+  function loadLine(id) {
+    const line = state.lines.find(x => x.id === id);
+    if (!line) return;
+    setLineId(line.id);
+    setLineName(line.name || '');
+    setLineDesc(line.description || '');
+    setLineBrandId(line.brandId || '');
+    setLineOriginal({ 
+      name: line.name || '', 
+      description: line.description || '', 
+      brandId: line.brandId || '' 
+    });
+    setShowEditLineForm(true);
+  }
+
+  async function saveLine() {
+    if (!lineName || !lineBrandId) {
+      alert('El nombre y la marca son requeridos.');
+      return;
+    }
+    if (!state.user || !state.user.id) {
+      alert('Debe iniciar sesión para gestionar líneas.');
+      return;
+    }
+    
+    const payload = {
+      id: lineId || undefined,
+      name: lineName,
+      description: lineDesc,
+      brandId: lineBrandId,
+    };
+    
+    try {
+      const savedId = await apiSaveLine(payload);
+      
+      const stateLine = {
+        id: savedId || lineId,
+        name: lineName,
+        description: lineDesc,
+        brandId: lineBrandId,
+      };
+      
+      if (lineId) {
+        // Actualizar línea existente
+        dispatch({ 
+          type: 'UPDATE_LINE', 
+          payload: stateLine 
+        });
+      } else {
+        // Agregar nueva línea
+        dispatch({ 
+          type: ACTIONS.ADD_LINE, 
+          payload: stateLine 
+        });
+      }
+      
+      emitCatalogRefresh();
+      clearLineForm();
+      setLastUpdate(new Date());
+    } catch (e) {
+      console.error('Error guardando línea:', e);
+      alert('Error al guardar la línea. Por favor, intenta de nuevo.');
+    }
+  }
+
+  const isLineDirty = useMemo(() => {
+    if (!lineId) return !!(lineName || lineDesc || lineBrandId);
+    if (!lineOriginal) return true;
+    return lineName !== lineOriginal.name || 
+           lineDesc !== lineOriginal.description || 
+           lineBrandId !== lineOriginal.brandId;
+  }, [lineId, lineOriginal, lineName, lineDesc, lineBrandId]);
+
+  async function deleteLine(id) {
+    const hasProducts = state.products.some(p => p.lineId === id);
+    if (hasProducts) {
+      alert('No se puede eliminar esta línea porque tiene productos asociados.');
+      return;
+    }
+    openConfirm('¿Eliminar línea?', async () => {
+      try {
+        await apiDeleteLine(id);
+        dispatch({ type: ACTIONS.DELETE_LINE, payload: id });
+        setLastUpdate(new Date());
+        emitCatalogRefresh();
+        if (lineId === id) {
+          clearLineForm();
+        }
+      } catch (e) {
+        console.error('Error eliminando línea:', e);
+        alert('Error al eliminar la línea. Por favor, intenta de nuevo.');
+      } finally {
+        closeConfirm();
+      }
+    });
   }
 
   function clearFilters() {
@@ -588,14 +763,11 @@ function Admin({ defaultTab = 'products', showLauncher = false, openCatalog }) {
       const savedCategory = await apiSaveCategory({
         name: trimmedName,
         description: '',
-        slug: null,
-        userId: state.user.id,
       });
       const newCategory = {
         id: savedCategory?.id ?? null,
         name: savedCategory?.name ?? trimmedName,
         description: savedCategory?.description ?? '',
-        slug: savedCategory?.slug ?? null,
       };
 
       if (!newCategory.name) {
@@ -808,6 +980,149 @@ function Admin({ defaultTab = 'products', showLauncher = false, openCatalog }) {
     }
   }
 
+  function openQuickLineCreator(previousValue = '') {
+    clearQuickLineCloseTimer();
+    setQuickLineDialog({
+      open: true,
+      name: '',
+      previousValue,
+      error: '',
+      info: '',
+    });
+  }
+
+  function closeQuickLineCreator() {
+    clearQuickLineCloseTimer();
+    setQuickLineDialog({
+      open: false,
+      name: '',
+      previousValue: '',
+      error: '',
+      info: '',
+    });
+  }
+
+  function handleProductLineChange(event) {
+    const selectedValue = event.target.value;
+
+    if (selectedValue !== QUICK_CREATE_LINE_VALUE) {
+      setPLineId(selectedValue);
+      return;
+    }
+
+    event.target.value = pLineId;
+
+    if (isQuickLineCreating) {
+      return;
+    }
+
+    openQuickLineCreator(pLineId);
+    if (!state.user || !state.user.id) {
+      setQuickLineDialog((prev) => ({
+        ...prev,
+        error: 'Debes iniciar sesión para crear líneas.',
+      }));
+    }
+  }
+
+  async function handleQuickLineNameChange(event) {
+    const { value } = event.target;
+    setQuickLineDialog((prev) => ({
+      ...prev,
+      name: value,
+      error: '',
+    }));
+  }
+
+  async function handleQuickLineSubmit(event) {
+    if (event) {
+      event.preventDefault();
+    }
+
+    if (isQuickLineCreating) {
+      return;
+    }
+
+    const trimmedName = (quickLineDialog.name || '').trim();
+    if (!trimmedName) {
+      setQuickLineDialog((prev) => ({
+        ...prev,
+        error: 'El nombre de la línea es requerido.',
+      }));
+      return;
+    }
+
+    if (!state.user || !state.user.id) {
+      setQuickLineDialog((prev) => ({
+        ...prev,
+        error: 'Debes iniciar sesión para crear líneas.',
+      }));
+      return;
+    }
+
+    if (!pBrandId) {
+      setQuickLineDialog((prev) => ({
+        ...prev,
+        error: 'Debes seleccionar una marca antes de crear una línea.',
+      }));
+      return;
+    }
+
+    try {
+      setIsQuickLineCreating(true);
+      setQuickLineDialog((prev) => ({
+        ...prev,
+        error: '',
+        info: 'Creando línea...',
+      }));
+
+      const exists = await apiCheckLineExists(trimmedName, pBrandId);
+      if (exists) {
+        setQuickLineDialog((prev) => ({
+          ...prev,
+          error: 'Ya existe una línea con este nombre para esta marca.',
+          info: '',
+        }));
+        return;
+      }
+
+      const lineId = await apiSaveLine({
+        name: trimmedName,
+        brandId: pBrandId,
+      });
+
+      dispatch({
+        type: 'ADD_LINE',
+        payload: {
+          id: lineId,
+          name: trimmedName,
+          brandId: pBrandId,
+        },
+      });
+
+      setPLineId(lineId);
+      setQuickLineDialog((prev) => ({
+        ...prev,
+        info: 'Línea creada exitosamente.',
+        error: '',
+      }));
+
+      // Auto close after success
+      quickLineCloseTimeoutRef.current = setTimeout(() => {
+        closeQuickLineCreator();
+      }, 1500);
+
+    } catch (error) {
+      setQuickLineDialog((prev) => ({
+        ...prev,
+        error: error?.message ? `No se pudo crear la línea: ${error.message}` : 'No se pudo crear la línea. Intenta nuevamente.',
+        info: '',
+      }));
+    } finally {
+      setIsQuickLineCreating(false);
+    }
+  }
+
   function loadProduct(id) {
     const p = state.products.find(x => x.id === id);
     if (!p) return;
@@ -816,6 +1131,7 @@ function Admin({ defaultTab = 'products', showLauncher = false, openCatalog }) {
     setPDesc(p.description || '');
     setPCategory(p.category || 'general');
     setPBrandId(p.brandId || '');
+    setPLineId(p.lineId || '');
     setPPrice(String(p.price || 0));
     setPImage(p.image || '');
     // valores opcionales si los tienes en memoria
@@ -839,27 +1155,57 @@ function Admin({ defaultTab = 'products', showLauncher = false, openCatalog }) {
       alert('Debe iniciar sesión para gestionar productos.');
       return;
     }
+    
+    // Buscar categoryId basándose en el nombre de la categoría seleccionada
+    const selectedCategory = state.categories.find(
+      cat => cat.name && cat.name.toLowerCase() === (pCategory || '').toLowerCase()
+    );
+    
     const payload = {
       id: pId || undefined,
       userId: state.user.id,
       brandId: pBrandId,
-      lineId: null,
+      lineId: pLineId,
       name: pName,
       description: pDesc,
-      category: pCategory,
       price: Number(pPrice),
       image: pImage,
       stockQuantity: Number(pStock || 0),
       minStock: Math.floor(Number(pStock || 0) * 0.3),
     };
+    
+    // Si la categoría existe, usar categoryId. Si no, usar newCategory para crearla
+    if (selectedCategory?.id) {
+      payload.categoryId = selectedCategory.id;
+    } else if (pCategory && pCategory.trim()) {
+      payload.newCategory = {
+        name: pCategory.trim(),
+        description: '',
+      };
+    }
+    
     try {
       const saved = await apiSaveProduct(payload);
+      
+      // Si se creó una nueva categoría, agregarla al estado global
+      if (saved?.category?.id && !selectedCategory) {
+        const newCategory = {
+          id: saved.category.id,
+          name: saved.category.name,
+          description: saved.category.description ?? '',
+          slug: saved.category.slug ?? null,
+        };
+        dispatch({ type: ACTIONS.UPSERT_CATEGORY, payload: newCategory });
+      }
+      
       const stateProduct = {
         id: saved?.id || payload.id,
         name: saved?.name ?? pName,
         description: saved?.description ?? pDesc,
-        category: saved?.category ?? pCategory,
+        category: saved?.category?.name ?? saved?.category ?? pCategory,
+        categoryId: saved?.categoryId ?? saved?.category_id ?? saved?.category?.id,
         brandId: saved?.brandId ?? saved?.brand_id ?? pBrandId,
+        lineId: saved?.lineId ?? saved?.line_id ?? pLineId,
         price: Number(saved?.price ?? payload.price ?? 0),
         image: saved?.image ?? pImage ?? "",
         stock_quantity: Number(saved?.stockQuantity ?? saved?.stock_quantity ?? payload.stockQuantity ?? 0),
@@ -869,6 +1215,7 @@ function Admin({ defaultTab = 'products', showLauncher = false, openCatalog }) {
       emitCatalogRefresh();
     } catch (e) {
       console.error('¿ Error guardando producto:', e);
+      alert('Error al guardar el producto. Por favor, intenta de nuevo.');
     }
     clearProductForm();
     setShowNewProductForm(false);
@@ -1358,9 +1705,9 @@ function Admin({ defaultTab = 'products', showLauncher = false, openCatalog }) {
           <img className="com__function_bar__icon--normalize" src={folderOpen} alt="" />
           <span className="com__function_bar__text">Productos</span>
         </div>
-        <div className="com__function_bar__button" id={tab === 'line' ? 'com__function_bar__button--active' : ''} onClick={() => setTab('line')}>
+        <div className={`com__function_bar__button ${tab === 'line' ? 'com__function_bar__button--active' : ''}`} onClick={() => setTab('line')}>
           <img className="com__function_bar__icon--normalize" src={folderOpen} alt="" />
-          <span className="com__function_bar__text">Linea</span>
+          <span className="com__function_bar__text">Líneas</span>
         </div>
         <div className={`com__function_bar__button ${tab === 'brands' ? 'com__function_bar__button--active' : ''}`} onClick={() => setTab('brands')}>
           <img className="com__function_bar__icon--normalize" src={folderOpen} alt="" />
@@ -1507,6 +1854,107 @@ function Admin({ defaultTab = 'products', showLauncher = false, openCatalog }) {
                           </button>
                           <button type="button" onClick={closeQuickBrandCreator} style={{ ...btn(), minWidth: 80 }}>
                             Cancelar
+                          </button>
+                        </div>
+                      </form>
+                    </div>
+                  </div>
+                )}
+
+                {/* Diálogo para crear línea al vuelo */}
+                {quickLineDialog.open && (
+                  <div
+                    style={{
+                      position: 'fixed',
+                      inset: 0,
+                      background: 'rgba(0,0,0,0.35)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      zIndex: 3100,
+                      padding: 16,
+                      boxSizing: 'border-box',
+                    }}
+                  >
+                    <div className="window" style={{ width: 360, maxWidth: '100%' }}>
+                      <div className="title-bar">
+                        <div className="title-bar-text">Crear nueva línea</div>
+                        <div className="title-bar-controls">
+                          <button type="button" aria-label="Minimize" disabled />
+                          <button type="button" aria-label="Maximize" disabled />
+                          <button type="button" aria-label="Close" onClick={closeQuickLineCreator} />
+                        </div>
+                      </div>
+                      <form onSubmit={handleQuickLineSubmit}>
+                        <div className="window-body" style={{ display: 'grid', gap: 12 }}>
+                          <div className="field-row-stacked">
+                            <label htmlFor="qp-line-name">Nombre de la línea</label>
+                            <input
+                              id="qp-line-name"
+                              ref={quickLineInputRef}
+                              value={quickLineDialog.name}
+                              onChange={(e) => handleQuickLineNameChange(e)}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Escape') {
+                                  e.preventDefault();
+                                  closeQuickLineCreator();
+                                }
+                              }}
+                              placeholder="Ej: Zapatillas"
+                              autoComplete="off"
+                              maxLength={80}
+                              disabled={isQuickLineCreating}
+                              style={{ background: isQuickLineCreating ? '#f5f5f5' : undefined }}
+                            />
+                          </div>
+                          <div
+                            className="field-row-stacked"
+                            style={{
+                              fontSize: 12,
+                              color: '#003399',
+                              background: '#f4f8ff',
+                              border: '1px solid #c7daf5',
+                              padding: '6px 8px',
+                            }}
+                          >
+                            La línea queda disponible inmediatamente para asignarla a un producto. Asegúrate de
+                            escribirla tal como quieres que aparezca en el catálogo.
+                          </div>
+                          {quickLineDialog.error && (
+                            <div
+                              className="field-row-stacked"
+                              style={{
+                                fontSize: 12,
+                                color: '#cc0000',
+                                background: '#fff5f5',
+                                border: '1px solid #f5c2c7',
+                                padding: '6px 8px',
+                              }}
+                            >
+                              {quickLineDialog.error}
+                            </div>
+                          )}
+                          {quickLineDialog.info && (
+                            <div
+                              className="field-row-stacked"
+                              style={{
+                                fontSize: 12,
+                                color: '#0c327d',
+                                background: '#e5f1ff',
+                                border: '1px solid #7aa2e8',
+                                padding: '6px 8px',
+                              }}
+                            >
+                              {quickLineDialog.info}
+                            </div>
+                          )}
+                        </div>
+                        <div className="window-body" style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, paddingTop: 0 }}>
+                          <button type="button" disabled={isQuickLineCreating} onClick={closeQuickLineCreator}>
+                            Cancelar
+                          </button>
+                          <button type="submit" disabled={isQuickLineCreating}>
+                            {isQuickLineCreating ? 'Creando...' : 'Crear'}
                           </button>
                         </div>
                       </form>
@@ -1898,14 +2346,25 @@ function Admin({ defaultTab = 'products', showLauncher = false, openCatalog }) {
 
                 {/* Contador */}
                 <div className="com__content__left__card__row" style={{ color: '#0c327d', marginTop: '8px', fontSize: '10px' }}>
-                  Total: {tab === 'products' ? `${filteredProducts.length} de ${totalProducts} productos` : `${filteredBrands.length} de ${totalBrands} marcas`}
+                  Total: {
+                    tab === 'products' ? `${filteredProducts.length} de ${totalProducts} productos` : 
+                    tab === 'brands' ? `${filteredBrands.length} de ${totalBrands} marcas` :
+                    tab === 'line' ? `${filteredLines.length} de ${state.lines.length} líneas` :
+                    ''
+                  }
                 </div>
               </div>
             </div>
           </div>
           <div className="com__content__right">
             <div className="com__content__right__card">
-              <div className="com__content__right__card__header">{tab === 'products' ? 'Catálogo de Productos' : ''}</div>
+              <div className="com__content__right__card__header">
+                {tab === 'products' ? 'Catálogo de Productos' : 
+                 tab === 'line' ? 'Líneas de Productos' : 
+                 tab === 'brands' ? 'Marcas' :
+                 tab === 'sales' ? 'Registro de Ventas' : 
+                 ''}
+              </div>
               <div className="com__content__right__card__content" style={{ width: '100%' }}>
                 {/* contenido existente del panel */}
                 <div style={{ display: 'flex', flexDirection: 'column', width: '100%' }}>
@@ -2262,6 +2721,30 @@ function Admin({ defaultTab = 'products', showLauncher = false, openCatalog }) {
                                       <option key={b.id} value={b.id}>{b.name}</option>
                                     ))}
                                     <option value={QUICK_CREATE_BRAND_VALUE}>+ Crear nueva marca...</option>
+                                  </select>
+                                </Field>
+                                <Field label="Línea">
+                                  <select
+                                    value={pLineId}
+                                    onChange={handleProductLineChange}
+                                    style={{
+                                      width: '100%',
+                                      padding: '4px 6px',
+                                      border: '1px solid #999',
+                                      fontSize: '11px',
+                                      background: '#fff',
+                                      fontFamily: 'Tahoma, Arial, sans-serif',
+                                      cursor: 'pointer',
+                                      boxShadow: 'inset 0 1px 0 #fff, 0 1px 0 #999'
+                                    }}
+                                    onFocus={(e) => e.target.style.border = '1px solid #4a90e2'}
+                                    onBlur={(e) => e.target.style.border = '1px solid #999'}
+                                  >
+                                    <option value="">Seleccione una línea</option>
+                                    {state.lines.map(l => (
+                                      <option key={l.id} value={l.id}>{l.name}</option>
+                                    ))}
+                                    <option value={QUICK_CREATE_LINE_VALUE}>+ Crear nueva línea...</option>
                                   </select>
                                 </Field>
                               </div>
@@ -2850,6 +3333,401 @@ function Admin({ defaultTab = 'products', showLauncher = false, openCatalog }) {
                                 <span>🗑️</span>
                                 Limpiar
                               </button>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {tab === 'line' && (
+                    <div style={{ display: 'grid', gridTemplateColumns: showEditLineForm ? '2fr 1fr' : '1fr', gap: 12, flex: 1 }}>
+                      <div style={{ overflow: 'auto' }}>
+                        <div style={groupHeader()}>Líneas de Productos</div>
+                        <div style={groupBody()}>
+                          <div style={{ display: 'grid', gridTemplateColumns: showEditLineForm ? 'repeat(auto-fill,minmax(240px,1fr))' : 'repeat(auto-fill,minmax(280px,1fr))', gap: 12 }}>
+                          {filteredLines.map(l => {
+                            const brand = state.brands.find(b => b.id === l.brandId);
+                            const productsCount = state.products.filter(p => p.lineId === l.id).length;
+                            
+                            return (
+                              <div key={l.id} style={{
+                                border: '1px solid #b0c4ff',
+                                background: '#fff',
+                                boxShadow: 'inset 0 0 0 1px #dde6ff',
+                                fontFamily: 'Tahoma, Arial, sans-serif'
+                              }}>
+                                {/* Header con icono */}
+                                <div style={{
+                                  height: 100,
+                                  background: 'linear-gradient(to bottom, #e8f0ff 0%, #d0e0ff 100%)',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  borderBottom: '1px solid #ccd6ff',
+                                  position: 'relative'
+                                }}>
+                                  <div style={{
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                    alignItems: 'center',
+                                    color: '#0c327d',
+                                  }}>
+                                    <span style={{ fontSize: '48px', marginBottom: '8px' }}>📋</span>
+                                  </div>
+                                  {/* Badge de línea */}
+                                  <div style={{
+                                    position: 'absolute',
+                                    top: '4px',
+                                    right: '4px',
+                                    background: 'linear-gradient(to bottom, #8d5adb 0%, #6531c5 100%)',
+                                    color: 'white',
+                                    padding: '3px 8px',
+                                    fontSize: '9px',
+                                    fontWeight: 'bold',
+                                    textTransform: 'uppercase',
+                                    border: '1px solid #4a1e8c',
+                                    borderRadius: '3px',
+                                    boxShadow: 'inset 0 1px 0 #a37be0, 0 1px 2px rgba(0,0,0,0.2)',
+                                    textShadow: '0 1px 1px rgba(0,0,0,0.3)'
+                                  }}>
+                                    LÍNEA
+                                  </div>
+                                </div>
+
+                                {/* Contenido de la tarjeta */}
+                                <div style={{ padding: '8px' }}>
+                                  {/* Nombre de la línea */}
+                                  <div style={{
+                                    fontWeight: 'bold',
+                                    textAlign: 'center',
+                                    fontSize: '13px',
+                                    color: '#000',
+                                    marginBottom: '6px'
+                                  }}>
+                                    {l.name}
+                                  </div>
+
+                                  {/* Información de la marca */}
+                                  <div style={{
+                                    fontSize: '10px',
+                                    color: '#666',
+                                    marginBottom: '8px',
+                                    padding: '6px',
+                                    background: '#f9f9f9',
+                                    border: '1px solid #e0e0e0',
+                                    borderRadius: '2px'
+                                  }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                      <span>🏷️ Marca:</span>
+                                      <span style={{ 
+                                        fontWeight: 'bold', 
+                                        color: brand ? '#0c327d' : '#999',
+                                        fontStyle: brand ? 'normal' : 'italic'
+                                      }}>
+                                        {brand ? brand.name : 'Sin marca'}
+                                      </span>
+                                    </div>
+                                  </div>
+
+                                  {/* Descripción */}
+                                  <div style={{
+                                    fontSize: '10px',
+                                    color: '#666',
+                                    marginBottom: '8px',
+                                    padding: '8px',
+                                    background: '#fffef0',
+                                    border: '1px solid #e8e0c0',
+                                    borderRadius: '2px',
+                                    minHeight: '50px'
+                                  }}>
+                                    <div style={{ 
+                                      fontSize: '10px', 
+                                      fontWeight: 'bold', 
+                                      color: '#8b7500',
+                                      marginBottom: '4px',
+                                      display: 'flex',
+                                      alignItems: 'center'
+                                    }}>
+                                      <span style={{ marginRight: '4px' }}>📝</span>
+                                      Descripción:
+                                    </div>
+                                    <div style={{ 
+                                      fontSize: '11px', 
+                                      color: '#333',
+                                      lineHeight: '1.4',
+                                      fontStyle: l.description ? 'normal' : 'italic'
+                                    }}>
+                                      {l.description || 'Sin descripción'}
+                                    </div>
+                                  </div>
+
+                                  {/* Botones de acción */}
+                                  <div style={{ display: 'flex', gap: '6px', justifyContent: 'center' }}>
+                                    <button
+                                      onClick={() => loadLine(l.id)}
+                                      style={{
+                                        flex: 1,
+                                        padding: '6px 10px',
+                                        background: 'linear-gradient(to bottom, #f8f8f8 0%, #e0e0e0 100%)',
+                                        border: '1px outset #f0f0f0',
+                                        borderRadius: '3px',
+                                        color: '#000',
+                                        fontSize: '11px',
+                                        fontWeight: 'bold',
+                                        cursor: 'pointer',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        gap: '4px',
+                                        fontFamily: 'Tahoma, Arial, sans-serif',
+                                        boxShadow: 'inset 0 1px 0 #fff, 0 1px 2px rgba(0,0,0,0.1)',
+                                        textShadow: '0 1px 0 rgba(255,255,255,0.8)'
+                                      }}
+                                      onMouseDown={(e) => {
+                                        e.target.style.background = 'linear-gradient(to bottom, #d0d0d0 0%, #f0f0f0 100%)';
+                                        e.target.style.boxShadow = 'inset 0 1px 0 #999, 0 1px 0 #fff';
+                                      }}
+                                      onMouseUp={(e) => {
+                                        e.target.style.background = 'linear-gradient(to bottom, #f0f0f0 0%, #d0d0d0 100%)';
+                                        e.target.style.boxShadow = 'inset 0 1px 0 #fff, 0 1px 0 #999';
+                                      }}
+                                      onMouseLeave={(e) => {
+                                        e.target.style.background = 'linear-gradient(to bottom, #f8f8f8 0%, #e0e0e0 100%)';
+                                        e.target.style.boxShadow = 'inset 0 1px 0 #fff, 0 1px 2px rgba(0,0,0,0.1)';
+                                      }}
+                                    >
+                                      <span style={{ fontSize: '10px' }}>✏️</span>
+                                      Editar
+                                    </button>
+                                    <button
+                                      disabled={productsCount > 0}
+                                      onClick={() => deleteLine(l.id)}
+                                      style={{
+                                        flex: 1,
+                                        padding: '6px 10px',
+                                        background: productsCount > 0
+                                          ? 'linear-gradient(to bottom, #e0e0e0 0%, #d0d0d0 100%)'
+                                          : 'linear-gradient(to bottom, #ff6b6b 0%, #ff5252 100%)',
+                                        border: productsCount > 0
+                                          ? '1px outset #d0d0d0'
+                                          : '1px outset #ff5252',
+                                        borderRadius: '3px',
+                                        color: productsCount > 0 ? '#999' : '#fff',
+                                        fontSize: '11px',
+                                        fontWeight: 'bold',
+                                        cursor: productsCount > 0 ? 'not-allowed' : 'pointer',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        gap: '4px',
+                                        fontFamily: 'Tahoma, Arial, sans-serif',
+                                        boxShadow: productsCount > 0
+                                          ? 'inset 0 1px 0 #e0e0e0, 0 1px 2px rgba(0,0,0,0.1)'
+                                          : 'inset 0 1px 0 #ff8a80, 0 1px 2px rgba(0,0,0,0.2)',
+                                        textShadow: productsCount > 0
+                                          ? '0 1px 0 rgba(255,255,255,0.5)'
+                                          : '0 1px 1px rgba(0,0,0,0.3)'
+                                      }}
+                                      onMouseDown={(e) => {
+                                        if (productsCount === 0) {
+                                          e.target.style.background = 'linear-gradient(to bottom, #ff5252 0%, #ff6b6b 100%)';
+                                          e.target.style.boxShadow = 'inset 0 1px 0 #ff8a80, 0 1px 1px rgba(0,0,0,0.2)';
+                                        }
+                                      }}
+                                      onMouseUp={(e) => {
+                                        if (productsCount === 0) {
+                                          e.target.style.background = 'linear-gradient(to bottom, #ff6b6b 0%, #ff5252 100%)';
+                                          e.target.style.boxShadow = 'inset 0 1px 0 #ff8a80, 0 1px 2px rgba(0,0,0,0.2)';
+                                        }
+                                      }}
+                                      onMouseLeave={(e) => {
+                                        if (productsCount === 0) {
+                                          e.target.style.background = 'linear-gradient(to bottom, #ff6b6b 0%, #ff5252 100%)';
+                                          e.target.style.boxShadow = 'inset 0 1px 0 #ff8a80, 0 1px 2px rgba(0,0,0,0.2)';
+                                        }
+                                      }}
+                                    >
+                                      <span style={{ fontSize: '10px' }}>🗑️</span>
+                                      Eliminar
+                                    </button>
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                        {filteredLines.length === 0 && (
+                          <div style={{
+                            textAlign: 'center',
+                            padding: '40px',
+                            color: '#666',
+                            fontFamily: 'Tahoma, Arial, sans-serif'
+                          }}>
+                            <div style={{ fontSize: '48px', marginBottom: '16px' }}>📋</div>
+                            <div style={{ fontSize: '14px', marginBottom: '8px', fontWeight: 'bold' }}>
+                              No hay líneas para mostrar
+                            </div>
+                            <div style={{ fontSize: '12px' }}>
+                              {searchQuery ? 'Intenta con otros términos de búsqueda' : 'Crea una línea desde el formulario de productos'}
+                            </div>
+                          </div>
+                        )}
+                        </div>
+                      </div>
+                      {showEditLineForm && (
+                        <div style={{ overflow: 'auto' }}>
+                          <div style={groupHeader()}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                              <span>Editar línea</span>
+                              <button
+                                onClick={clearLineForm}
+                                style={{ 
+                                  padding: '4px 8px', 
+                                  background: 'linear-gradient(to bottom, #f0f0f0 0%, #d0d0d0 100%)', 
+                                  border: '1px solid #999', 
+                                  fontSize: 11, 
+                                  cursor: 'pointer',
+                                  borderRadius: '2px'
+                                }}
+                              >
+                                ✕ Cerrar
+                              </button>
+                            </div>
+                          </div>
+                          <div style={groupBody()}>
+                            <div style={{ padding: '8px' }}>
+                              <Field label="Nombre:">
+                                <input
+                                  type="text"
+                                  value={lineName}
+                                  onChange={(e) => setLineName(e.target.value)}
+                                  style={{
+                                    width: '100%',
+                                    padding: '4px 6px',
+                                    border: '1px solid #999',
+                                    fontFamily: 'Tahoma, Arial, sans-serif',
+                                    fontSize: '11px',
+                                    background: '#fff',
+                                    boxShadow: 'inset 0 1px 0 #fff, 0 1px 0 #999'
+                                  }}
+                                  onFocus={(e) => e.target.style.border = '1px solid #4a90e2'}
+                                  onBlur={(e) => e.target.style.border = '1px solid #999'}
+                                />
+                              </Field>
+                              
+                              <Field label="Marca:">
+                                <select
+                                  value={lineBrandId}
+                                  onChange={(e) => setLineBrandId(e.target.value)}
+                                  style={{
+                                    width: '100%',
+                                    padding: '4px 6px',
+                                    border: '1px solid #999',
+                                    fontFamily: 'Tahoma, Arial, sans-serif',
+                                    fontSize: '11px',
+                                    background: '#fff',
+                                    boxShadow: 'inset 0 1px 0 #fff, 0 1px 0 #999'
+                                  }}
+                                  onFocus={(e) => e.target.style.border = '1px solid #4a90e2'}
+                                  onBlur={(e) => e.target.style.border = '1px solid #999'}
+                                >
+                                  <option value="">Seleccionar marca...</option>
+                                  {state.brands.map(b => (
+                                    <option key={b.id} value={b.id}>{b.name}</option>
+                                  ))}
+                                </select>
+                              </Field>
+                              
+                              <Field label="Descripción:">
+                                <textarea
+                                  value={lineDesc}
+                                  onChange={(e) => setLineDesc(e.target.value)}
+                                  rows={4}
+                                  style={{
+                                    width: '100%',
+                                    padding: '4px 6px',
+                                    border: '1px solid #999',
+                                    fontFamily: 'Tahoma, Arial, sans-serif',
+                                    fontSize: '11px',
+                                    background: '#fff',
+                                    resize: 'vertical',
+                                    boxShadow: 'inset 0 1px 0 #fff, 0 1px 0 #999'
+                                  }}
+                                  onFocus={(e) => e.target.style.border = '1px solid #4a90e2'}
+                                  onBlur={(e) => e.target.style.border = '1px solid #999'}
+                                />
+                              </Field>
+
+                              <div style={{ display: 'flex', gap: 8, marginTop: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
+                                <button
+                                  style={{
+                                    padding: '6px 12px',
+                                    background: isLineDirty 
+                                      ? 'linear-gradient(to bottom, #4CAF50 0%, #45a049 100%)' 
+                                      : 'linear-gradient(to bottom, #f0f0f0 0%, #d0d0d0 100%)',
+                                    border: '1px solid #999',
+                                    color: isLineDirty ? '#fff' : '#999',
+                                    fontSize: '11px',
+                                    fontWeight: 'bold',
+                                    cursor: isLineDirty ? 'pointer' : 'not-allowed',
+                                    borderRadius: '3px',
+                                    fontFamily: 'Tahoma, Arial, sans-serif',
+                                    boxShadow: isLineDirty 
+                                      ? 'inset 0 1px 0 #66BB6A, 0 1px 2px rgba(0,0,0,0.2)' 
+                                      : 'inset 0 1px 0 #fff, 0 1px 0 #999',
+                                    textShadow: isLineDirty ? '0 1px 1px rgba(0,0,0,0.3)' : 'none'
+                                  }}
+                                  disabled={!isLineDirty}
+                                  onClick={saveLine}
+                                >
+                                  💾 Guardar
+                                </button>
+                                <button
+                                  style={{
+                                    padding: '6px 12px',
+                                    background: 'linear-gradient(to bottom, #f0f0f0 0%, #d0d0d0 100%)',
+                                    border: '1px solid #999',
+                                    color: '#000',
+                                    fontSize: '11px',
+                                    fontWeight: 'bold',
+                                    cursor: 'pointer',
+                                    borderRadius: '3px',
+                                    fontFamily: 'Tahoma, Arial, sans-serif',
+                                    boxShadow: 'inset 0 1px 0 #fff, 0 1px 0 #999'
+                                  }}
+                                  onClick={clearLineForm}
+                                >
+                                  ✕ Cancelar
+                                </button>
+                                {lineId && (
+                                  <button
+                                    disabled={state.products.some(p => p.lineId === lineId)}
+                                    style={{
+                                      padding: '6px 12px',
+                                      background: state.products.some(p => p.lineId === lineId)
+                                        ? 'linear-gradient(to bottom, #e0e0e0 0%, #d0d0d0 100%)'
+                                        : 'linear-gradient(to bottom, #ff6b6b 0%, #ff5252 100%)',
+                                      border: '1px solid #999',
+                                      color: state.products.some(p => p.lineId === lineId) ? '#999' : '#fff',
+                                      fontSize: '11px',
+                                      fontWeight: 'bold',
+                                      cursor: state.products.some(p => p.lineId === lineId) ? 'not-allowed' : 'pointer',
+                                      borderRadius: '3px',
+                                      fontFamily: 'Tahoma, Arial, sans-serif',
+                                      boxShadow: state.products.some(p => p.lineId === lineId)
+                                        ? 'inset 0 1px 0 #e0e0e0, 0 1px 0 #999'
+                                        : 'inset 0 1px 0 #ff8a80, 0 1px 2px rgba(0,0,0,0.2)',
+                                      textShadow: state.products.some(p => p.lineId === lineId)
+                                        ? 'none'
+                                        : '0 1px 1px rgba(0,0,0,0.3)'
+                                    }}
+                                    onClick={() => deleteLine(lineId)}
+                                  >
+                                    🗑️ Eliminar
+                                  </button>
+                                )}
+                              </div>
                             </div>
                           </div>
                         </div>
