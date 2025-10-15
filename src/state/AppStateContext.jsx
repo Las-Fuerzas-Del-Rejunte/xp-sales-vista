@@ -191,8 +191,10 @@ export function AppStateProvider({ children }) {
   async function resolveUserWithRole(baseUser) {
     if (!baseUser) return null;
     let role = (baseUser.user_metadata && baseUser.user_metadata.role) || baseUser.role || '';
+    let profileExists = false;
+    
     try {
-      if (!role && supabase && supabase.from && baseUser.id) {
+      if (supabase && supabase.from && baseUser.id) {
         const tryQueries = [
           { table: 'profiles', field: 'id', value: baseUser.id },
           { table: 'profiles', field: 'user_id', value: baseUser.id },
@@ -208,8 +210,41 @@ export function AppStateProvider({ children }) {
               .select('role')
               .eq(q.field, q.value)
               .maybeSingle();
-            if (prof && prof.role) role = prof.role;
+            if (prof && prof.role) {
+              role = prof.role;
+              profileExists = true;
+            }
           } catch (_inner) {}
+        }
+        
+        // Si no existe perfil, crearlo automáticamente (especialmente para usuarios de Google)
+        if (!profileExists && baseUser.id && baseUser.email) {
+          try {
+            const newProfile = {
+              id: baseUser.id,
+              user_id: baseUser.id,
+              email: baseUser.email,
+              role: 'cliente',
+              full_name: baseUser.user_metadata?.full_name || baseUser.user_metadata?.name || baseUser.email.split('@')[0],
+              avatar_url: baseUser.user_metadata?.avatar_url || '',
+            };
+            
+            const { data: insertedProfile, error: insertError } = await supabase
+              .from('profiles')
+              .insert(newProfile)
+              .select()
+              .single();
+            
+            if (!insertError && insertedProfile) {
+              console.log('✅ Perfil creado automáticamente para:', baseUser.email);
+              role = insertedProfile.role || 'cliente';
+              profileExists = true;
+            } else if (insertError) {
+              console.warn('⚠️ No se pudo crear el perfil automáticamente:', insertError.message);
+            }
+          } catch (createError) {
+            console.warn('⚠️ Error al crear perfil:', createError);
+          }
         }
       }
     } catch (_e) {}
