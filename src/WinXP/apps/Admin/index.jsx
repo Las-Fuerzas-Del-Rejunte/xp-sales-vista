@@ -814,8 +814,12 @@ function Admin({ defaultTab = 'products', showLauncher = false, openCatalog }) {
       return;
     }
 
-    event.target.value = pCategory;
-
+    // Restaurar el valor anterior inmediatamente usando setTimeout
+    // para que React procese el cambio después del render actual
+    setTimeout(() => {
+      // No cambiamos pCategory, se mantiene el valor anterior
+    }, 0);
+    
     if (isQuickCategoryCreating) {
       return;
     }
@@ -965,7 +969,11 @@ function Admin({ defaultTab = 'products', showLauncher = false, openCatalog }) {
       return;
     }
 
-    event.target.value = pBrandId;
+    // Restaurar el valor anterior inmediatamente usando setTimeout
+    // para que React procese el cambio después del render actual
+    setTimeout(() => {
+      // No cambiamos pBrandId, se mantiene el valor anterior
+    }, 0);
 
     if (isQuickBrandCreating) {
       return;
@@ -1010,7 +1018,11 @@ function Admin({ defaultTab = 'products', showLauncher = false, openCatalog }) {
       return;
     }
 
-    event.target.value = pLineId;
+    // Restaurar el valor anterior inmediatamente usando setTimeout
+    // para que React procese el cambio después del render actual
+    setTimeout(() => {
+      // No cambiamos pLineId, se mantiene el valor anterior
+    }, 0);
 
     if (isQuickLineCreating) {
       return;
@@ -2741,9 +2753,13 @@ function Admin({ defaultTab = 'products', showLauncher = false, openCatalog }) {
                                     onBlur={(e) => e.target.style.border = '1px solid #999'}
                                   >
                                     <option value="">Seleccione una línea</option>
-                                    {state.lines.map(l => (
-                                      <option key={l.id} value={l.id}>{l.name}</option>
-                                    ))}
+                                    {state.lines.map(l => {
+                                      const brand = state.brands.find(b => b.id === l.brandId);
+                                      const displayName = brand ? `${l.name} - ${brand.name}` : l.name;
+                                      return (
+                                        <option key={l.id} value={l.id}>{displayName}</option>
+                                      );
+                                    })}
                                     <option value={QUICK_CREATE_LINE_VALUE}>+ Crear nueva línea...</option>
                                   </select>
                                 </Field>
