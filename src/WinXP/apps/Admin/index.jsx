@@ -10,6 +10,7 @@ import computer from 'assets/windowsIcons/676(16x16).png';
 import dropdown from 'assets/windowsIcons/dropdown.png';
 import pullup from 'assets/windowsIcons/pullup.png';
 import windows from 'assets/windowsIcons/windows.png';
+import userIcon from 'assets/windowsIcons/887(32x32).png';
 import { WindowDropDowns } from 'components';
 import { saveProduct as apiSaveProduct, deleteProduct as apiDeleteProduct, saveBrand as apiSaveBrand, deleteBrand as apiDeleteBrand, saveCategory as apiSaveCategory, fetchSalesByEmployee, updateSale as apiUpdateSale, deleteSale as apiDeleteSale, saveLine as apiSaveLine, deleteLine as apiDeleteLine, checkLineExists as apiCheckLineExists } from 'lib/apiClient';
 import mcDropDownData from 'WinXP/apps/MyComputer/dropDownData';
@@ -148,6 +149,12 @@ function Admin({ defaultTab = 'products', showLauncher = false, openCatalog }) {
   const [editDate, setEditDate] = useState('');
   const [editTotal, setEditTotal] = useState('');
 
+  // Estados para gestión de usuarios
+  const [users, setUsers] = useState([]);
+  const [usersLoading, setUsersLoading] = useState(false);
+  const [selectedUser, setSelectedUser] = useState(null);
+  const [editingUserRole, setEditingUserRole] = useState(null);
+
   // Modal de confirmación estilo Windows XP
   const [confirmDialog, setConfirmDialog] = useState({ open: false, title: 'C:\\', message: '', onConfirm: null });
   function openConfirm(message, onConfirm, title = 'C:\\') {
@@ -155,6 +162,15 @@ function Admin({ defaultTab = 'products', showLauncher = false, openCatalog }) {
   }
   function closeConfirm() {
     setConfirmDialog({ open: false, title: 'C\\', message: '', onConfirm: null });
+  }
+  
+  // Modal de información estilo Windows XP
+  const [infoDialog, setInfoDialog] = useState({ open: false, title: 'Información', message: '', icon: 'info' });
+  function showInfo(message, title = 'Información', icon = 'info') {
+    setInfoDialog({ open: true, title, message, icon });
+  }
+  function closeInfo() {
+    setInfoDialog({ open: false, title: 'Información', message: '', icon: 'info' });
   }
   // Escuchar eventos globales para refrescar ventas
   React.useEffect(() => {
@@ -253,6 +269,91 @@ function Admin({ defaultTab = 'products', showLauncher = false, openCatalog }) {
     }
   }
 
+  // Funciones para gestión de usuarios
+  const loadUsers = React.useCallback(async () => {
+    if (!isAdmin) return;
+    
+    setUsersLoading(true);
+    try {
+      // Usar la función de Postgres que bypassa RLS para admins
+      const { data, error } = await supabase
+        .rpc('get_all_users_for_admin');
+      
+      if (error) throw error;
+      
+      console.log(`✅ ${data?.length || 0} usuarios cargados`);
+      setUsers(data || []);
+    } catch (error) {
+      console.error('❌ Error cargando usuarios:', error);
+      showInfo(`Error al cargar usuarios:\n\n${error.message || 'Error desconocido'}`, 'Error', 'error');
+      setUsers([]);
+    } finally {
+      setUsersLoading(false);
+    }
+  }, [supabase, isAdmin]);
+
+  React.useEffect(() => {
+    if (tab === 'users' && isAdmin) {
+      loadUsers();
+    }
+  }, [tab, isAdmin, loadUsers]);
+
+  async function updateUserRole(userId, newRole) {
+    if (!isAdmin) {
+      showInfo('No tienes permisos para cambiar roles', 'Acceso Denegado', 'error');
+      return;
+    }
+
+    // Protección: No puedes quitarte tu propio rol de admin
+    if (userId === state.user?.id && newRole !== 'admin') {
+      showInfo('No puedes quitarte tu propio rol de administrador', 'Acción no permitida', 'warning');
+      setEditingUserRole(null);
+      return;
+    }
+
+    // Buscar el usuario para mostrar su nombre en la confirmación
+    const user = users.find(u => u.user_id === userId);
+    const userName = user?.name || user?.email || 'este usuario';
+    const roleText = newRole === 'admin' ? 'Administrador' : 'Empleado';
+
+    // Confirmar el cambio usando el modal
+    openConfirm(
+      `¿Estás seguro de cambiar el rol de "${userName}" a "${roleText}"?\n\n` +
+      (newRole === 'admin' 
+        ? '✅ Como Admin podrá: gestionar productos, usuarios y ver todas las ventas'
+        : '⚠️ Como Empleado solo podrá: realizar ventas y ver su propio historial'),
+      async () => {
+        try {
+          // Usar la función RPC para actualizar el rol (bypassa RLS)
+          const { error } = await supabase
+            .rpc('update_user_role', {
+              target_user_id: userId,
+              new_role: newRole
+            });
+          
+          if (error) throw error;
+          
+          // Actualizar la lista local
+          setUsers(prevUsers =>
+            prevUsers.map(u =>
+              u.user_id === userId ? { ...u, role: newRole, updated_at: new Date().toISOString() } : u
+            )
+          );
+          setEditingUserRole(null);
+          
+          // Feedback de éxito
+          showInfo(`Rol actualizado exitosamente!\n\n"${userName}" ahora es ${roleText}`, 'Éxito', 'success');
+          
+          console.log(`Rol actualizado: ${userName} -> ${roleText}`);
+        } catch (error) {
+          console.error('Error actualizando rol:', error);
+          showInfo(`Error al actualizar el rol del usuario:\n\n${error.message || 'Error desconocido'}`, 'Error', 'error');
+          setEditingUserRole(null);
+        }
+      },
+      'Confirmar cambio de rol'
+    );
+  }
 
   // Responsive: detectar ventana angosta para apilar columnas
   const [isNarrow, setIsNarrow] = useState(false);
@@ -1729,6 +1830,12 @@ function Admin({ defaultTab = 'products', showLauncher = false, openCatalog }) {
           <img className="com__function_bar__icon--normalize" src={folderOpen} alt="" />
           <span className="com__function_bar__text">Ventas</span>
         </div>
+        {isAdmin && (
+          <div className={`com__function_bar__button ${tab === 'users' ? 'com__function_bar__button--active' : ''}`} onClick={() => setTab('users')}>
+            <img className="com__function_bar__icon--normalize" src={userIcon} alt="" />
+            <span className="com__function_bar__text">Usuarios</span>
+          </div>
+        )}
       </section>
       <section className="com__address_bar">
         <div className="com__address_bar__title">Dirección</div>
@@ -2094,7 +2201,7 @@ function Admin({ defaultTab = 'products', showLauncher = false, openCatalog }) {
                       <div style={{ padding: 14, background: '#fff', border: '1px inset #f0f0f0' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                           <div style={{ fontSize: 28, color: '#cc0000' }}>❌</div>
-                          <div style={{ fontSize: 12, color: '#000' }}>{confirmDialog.message}</div>
+                          <div style={{ fontSize: 12, color: '#000', whiteSpace: 'pre-wrap' }}>{confirmDialog.message}</div>
                         </div>
                         <div style={{ display: 'flex', justifyContent: 'center', gap: 10, marginTop: 14 }}>
                           <button onClick={async () => { try { if (typeof confirmDialog.onConfirm === 'function') await confirmDialog.onConfirm(); } finally { closeConfirm(); } }}
@@ -2105,6 +2212,33 @@ function Admin({ defaultTab = 'products', showLauncher = false, openCatalog }) {
                     </div>
                   </div>
                 )}
+
+                {/* Info dialog estilo Windows XP */}
+                {infoDialog.open && (
+                  <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.25)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 3000 }}>
+                    <div style={{ width: 380, background: '#f0f0f0', border: '2px outset #f0f0f0', boxShadow: '2px 2px 6px rgba(0,0,0,0.35)' }}>
+                      <div style={{ background: 'linear-gradient(to bottom, #316ac5 0%, #1e4a8c 100%)', color: '#fff', padding: '6px 10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #1e4a8c' }}>
+                        <span style={{ fontWeight: 'bold', fontSize: 12 }}>{infoDialog.title}</span>
+                        <button onClick={closeInfo} style={{ background: 'transparent', border: 'none', color: '#fff', fontSize: 14, cursor: 'pointer' }}>✕</button>
+                      </div>
+                      <div style={{ padding: 14, background: '#fff', border: '1px inset #f0f0f0' }}>
+                        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+                          <div style={{ fontSize: 28, flexShrink: 0 }}>
+                            {infoDialog.icon === 'success' && '✅'}
+                            {infoDialog.icon === 'error' && '❌'}
+                            {infoDialog.icon === 'warning' && '⚠️'}
+                            {infoDialog.icon === 'info' && 'ℹ️'}
+                          </div>
+                          <div style={{ fontSize: 12, color: '#000', whiteSpace: 'pre-wrap', flex: 1 }}>{infoDialog.message}</div>
+                        </div>
+                        <div style={{ display: 'flex', justifyContent: 'center', marginTop: 14 }}>
+                          <button onClick={closeInfo} style={{ padding: '6px 20px', background: 'linear-gradient(to bottom, #f0f0f0 0%, #d0d0d0 100%)', border: '1px outset #f0f0f0', fontWeight: 'bold', cursor: 'pointer' }}>Aceptar</button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
                 {tab === 'brands' && (
                   <div className="com__content__left__card__row">
                     <button style={btn()} onClick={showNewBrandForm ? clearBrandForm : showNewBrand}>
@@ -3952,6 +4086,182 @@ function Admin({ defaultTab = 'products', showLauncher = false, openCatalog }) {
                       )}
                     </div>
                   )}
+
+                  {/* Tab de Gestión de Usuarios */}
+                  {tab === 'users' && isAdmin && (
+                    <div style={{ display: 'flex', flexDirection: 'column', width: '100%' }}>
+                      <div style={groupHeader()}>Gestión de Usuarios</div>
+                      <div style={groupBody()}>
+                        <div className="field-row" style={{ marginBottom: '12px', justifyContent: 'space-between' }}>
+                          <div>
+                            <strong>Total de usuarios:</strong> {users.length}
+                          </div>
+                          <button
+                            onClick={loadUsers}
+                            disabled={usersLoading}
+                            style={{ minWidth: '100px' }}
+                          >
+                            {usersLoading ? '⏳ Cargando...' : '🔁 Actualizar'}
+                          </button>
+                        </div>                        {usersLoading ? (
+                          <div className="sunken-panel" style={{
+                            textAlign: 'center',
+                            padding: '40px',
+                            background: 'white'
+                          }}>
+                            <div style={{ fontSize: '24px', marginBottom: '8px' }}>⏳</div>
+                            <div>Cargando usuarios...</div>
+                          </div>
+                        ) : users.length === 0 ? (
+                          <div className="sunken-panel" style={{
+                            textAlign: 'center',
+                            padding: '40px',
+                            background: 'white'
+                          }}>
+                            <div style={{ fontSize: '24px', marginBottom: '8px' }}>👥</div>
+                            <div>No hay usuarios registrados</div>
+                          </div>
+                        ) : (
+                          <div className="sunken-panel" style={{ 
+                            padding: 0,
+                            background: 'white',
+                            maxHeight: '500px',
+                            overflowY: 'auto'
+                          }}>
+                            <table className="interactive" style={{ width: '100%', borderCollapse: 'collapse' }}>
+                              <thead>
+                                <tr>
+                                  <th style={{ width: '50px', textAlign: 'center' }}>#</th>
+                                  <th style={{ textAlign: 'left' }}>Nombre</th>
+                                  <th style={{ textAlign: 'left' }}>Email</th>
+                                  <th style={{ width: '120px', textAlign: 'center' }}>Rol Actual</th>
+                                  <th style={{ width: '160px', textAlign: 'center' }}>Cambiar Rol</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {users.map((user, index) => (
+                                  <tr key={user.user_id}>
+                                    <td style={{ textAlign: 'center', fontWeight: 'bold', color: '#316ac5' }}>
+                                      {index + 1}
+                                    </td>
+                                    <td>
+                                      <div style={{ 
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '6px'
+                                      }}>
+                                        <strong>{user.name || 'Sin nombre'}</strong>
+                                        {user.user_id === state.user?.id && (
+                                          <span className="status-bar-field" style={{
+                                            padding: '1px 4px',
+                                            fontSize: '9px'
+                                          }}>Tú</span>
+                                        )}
+                                      </div>
+                                    </td>
+                                    <td style={{ fontSize: '11px', color: '#555' }}>
+                                      {user.email}
+                                    </td>
+                                    <td style={{ textAlign: 'center' }}>
+                                      <span className="status-bar-field" style={{
+                                        padding: '3px 8px',
+                                        display: 'inline-block',
+                                        background: user.role === 'admin' ? '#ffe8e8' : '#e8f5e8',
+                                        color: user.role === 'admin' ? '#c62828' : '#2e7d32',
+                                        fontWeight: 'bold',
+                                        fontSize: '10px'
+                                      }}>
+                                        {user.role === 'admin' ? '👨‍💼 Admin' : '👤 Empleado'}
+                                      </span>
+                                    </td>
+                                    <td style={{ padding: '8px' }}>
+                                      <div className="field-row" style={{ justifyContent: 'center' }}>
+                                        <select
+                                          value={user.role || 'empleado'}
+                                          onChange={(e) => {
+                                            const newRole = e.target.value;
+                                            if (newRole !== user.role) {
+                                              updateUserRole(user.user_id, newRole);
+                                            }
+                                          }}
+                                          style={{ width: '130px' }}
+                                        >
+                                          <option value="empleado">👤 Empleado</option>
+                                          <option value="admin">👨‍💼 Admin</option>
+                                        </select>
+                                      </div>
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        )}
+
+                        {/* Estadísticas y ayuda */}
+                        {users.length > 0 && (
+                          <div style={{ display: 'flex', gap: '12px', marginTop: '16px' }}>
+                            {/* Estadísticas */}
+                            <div style={{
+                              flex: 1,
+                              background: '#e8f5e9',
+                              border: '1px solid #4caf50',
+                              borderRadius: '4px',
+                              padding: '12px',
+                              fontSize: '11px'
+                            }}>
+                              <div style={{ fontWeight: 'bold', marginBottom: '8px', color: '#2e7d32' }}>
+                                📊 Estadísticas
+                              </div>
+                              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                                <div>
+                                  <div style={{ fontSize: '10px', color: '#666' }}>Total Usuarios:</div>
+                                  <div style={{ fontWeight: 'bold', fontSize: '16px', color: '#1976d2' }}>
+                                    {users.length}
+                                  </div>
+                                </div>
+                                <div>
+                                  <div style={{ fontSize: '10px', color: '#666' }}>Administradores:</div>
+                                  <div style={{ fontWeight: 'bold', fontSize: '16px', color: '#c62828' }}>
+                                    {users.filter(u => u.role === 'admin').length}
+                                  </div>
+                                </div>
+                                <div>
+                                  <div style={{ fontSize: '10px', color: '#666' }}>Empleados:</div>
+                                  <div style={{ fontWeight: 'bold', fontSize: '16px', color: '#2e7d32' }}>
+                                    {users.filter(u => u.role === 'empleado').length}
+                                  </div>
+                                </div>
+                                <div>
+                                  <div style={{ fontSize: '10px', color: '#666' }}>Sin Rol:</div>
+                                  <div style={{ fontWeight: 'bold', fontSize: '16px', color: '#666' }}>
+                                    {users.filter(u => !u.role || u.role === '').length}
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Información */}
+                            <div style={{
+                              flex: 1,
+                              background: '#fff3cd',
+                              border: '1px solid #ffc107',
+                              borderRadius: '4px',
+                              padding: '12px',
+                              fontSize: '11px'
+                            }}>
+                              <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>ℹ️ Permisos por Rol:</div>
+                              <ul style={{ margin: '4px 0', paddingLeft: '20px', lineHeight: '1.6' }}>
+                                <li><strong>👨‍💼 Admin:</strong> Gestión completa (productos, usuarios, todas las ventas)</li>
+                                <li><strong>👤 Empleado:</strong> Realizar ventas</li>
+                                <li><strong>⚠️ Protección:</strong> No puedes quitarte tu propio rol de admin</li>
+                              </ul>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
                   {/* cierre contenedor columna */}
                 </div>
                 {/* cierre content wrapper */}
@@ -3967,7 +4277,9 @@ function Admin({ defaultTab = 'products', showLauncher = false, openCatalog }) {
 
       {/* Barra de estado */}
       <div style={{ marginTop: 8, background: '#e8e4cf', border: '1px solid #b8b4a2', padding: '0px 8px', fontSize: 11 }}>
-        Estado: Sistema operativo | Productos: {totalProducts} | Última actualización: {lastUpdate.toLocaleString()}
+        Estado: Sistema operativo | {
+          tab === 'users' ? `Usuarios: ${users.length}` : `Productos: ${totalProducts}`
+        } | Última actualización: {lastUpdate.toLocaleString()}
       </div>
     </Div>
   );
