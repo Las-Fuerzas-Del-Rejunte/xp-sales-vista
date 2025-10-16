@@ -20,15 +20,10 @@ function Field({ label, type, value, onChange }) {
 
 function LoginModal({ onClose }) {
   const { supabase, dispatch, ACTIONS } = useAppState();
-  const [mode, setMode] = useState('login'); // 'login' | 'register' | 'reset'
+  const [mode, setMode] = useState('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [message, setMessage] = useState('');
-  
-  const changeMode = (newMode) => {
-    setMode(newMode);
-    setMessage('');
-  };
 
   const translateError = errorMessage => {
     const dictionary = {
@@ -84,7 +79,7 @@ function LoginModal({ onClose }) {
       const translated = translateError(error.message);
       setMessage(translated);
       if (error.message && error.message.includes('Invalid login credentials')) {
-        changeMode('register');
+        setMode('register');
       }
       return;
     }
@@ -111,7 +106,7 @@ function LoginModal({ onClose }) {
       dispatch({ type: ACTIONS.SET_SESSION, payload: { session: data.session, user: data.user } });
       setMessage('Registro completado. ¡Bienvenido!');
     } else {
-      changeMode('login');
+      setMode('login');
       setMessage('Hemos enviado un correo de confirmación. Revisa tu bandeja para activar la cuenta.');
     }
   }
@@ -138,37 +133,9 @@ function LoginModal({ onClose }) {
       setMessage(translateError(e?.message || '')); 
     }
   }
-  
-  async function onResetPassword() {
-    setMessage('');
-    if (!email) {
-      return setMessage('Ingresa tu email para recuperar la contraseña');
-    }
-    
-    try {
-      const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/`,
-      });
-      
-      if (error) {
-        setMessage(translateError(error.message));
-        return;
-      }
-      
-      setMessage('✅ Hemos enviado un correo con instrucciones para restablecer tu contraseña. Revisa tu bandeja de entrada.');
-      setTimeout(() => {
-        changeMode('login');
-      }, 3000);
-    } catch (e) {
-      setMessage(translateError(e?.message || 'Error al enviar el correo de recuperación'));
-    }
-  }
-  
   function onKeyDown(e) {
     if (e.key === 'Enter') {
-      if (mode === 'login') onLogin();
-      else if (mode === 'register') onRegister();
-      else if (mode === 'reset') onResetPassword();
+      if (mode === 'login') onLogin(); else onRegister();
     }
   }
 
@@ -196,109 +163,50 @@ function LoginModal({ onClose }) {
           borderTopRightRadius: 2,
         }}
       >
-        <span>
-          {mode === 'login' && 'Iniciar sesión en Windows XP'}
-          {mode === 'register' && 'Registrarse en Windows XP'}
-          {mode === 'reset' && 'Recuperar contraseña'}
-        </span>
+        <span>{mode === 'login' ? 'Iniciar sesión en Windows XP' : 'Registrarse en Windows XP'}</span>
         <button onClick={onClose} style={{ background: 'transparent', color: '#fff', border: 0, fontSize: 16, cursor: 'pointer' }}>✕</button>
       </div>
       <div style={{ padding: 0 }} onKeyDown={onKeyDown}>
         {/* Banner interno XP */}
         <div style={{
           height: 72,
-          background: mode === 'login' ? 'linear-gradient(180deg,#3b70c9 0%, #2d5fb5 50%, #2453a6 100%)' : mode === 'reset' ? 'linear-gradient(180deg,#e67e22 0%, #d35400 50%, #c0392b 100%)' : 'linear-gradient(180deg,#2f9c5a 0%, #28864e 60%, #207443 100%)',
+          background: mode === 'login' ? 'linear-gradient(180deg,#3b70c9 0%, #2d5fb5 50%, #2453a6 100%)' : 'linear-gradient(180deg,#2f9c5a 0%, #28864e 60%, #207443 100%)',
           color: '#fff',
           padding: '10px 14px',
           boxShadow: 'inset 0 -1px 0 rgba(255,255,255,0.3)'
         }}>
           <div style={{ fontSize: 20, fontWeight: 'bold' }}>Sistema de Ventas <span style={{ color: '#ff7a00' }}>El Rejunte</span></div>
-          <div style={{ opacity: 0.9, marginTop: 4, fontSize: 12 }}>
-            {mode === 'login' && 'Professional'}
-            {mode === 'register' && 'Create Account'}
-            {mode === 'reset' && 'Password Recovery'}
-          </div>
+          <div style={{ opacity: 0.9, marginTop: 4, fontSize: 12 }}>{mode === 'login' ? 'Professional' : 'Create Account'}</div>
         </div>
 
         {/* Panel beige con campos */}
         <div style={{ background: '#ece9d8', padding: 16 }}>
           <div style={{ maxWidth: 420, margin: '0 auto' }}>
             <Field label="Usuario" type="email" value={email} onChange={setEmail} />
-            {mode !== 'reset' && (
-              <Field label="Contraseña" type="password" value={password} onChange={setPassword} />
-            )}
-
-            {mode === 'reset' && (
-              <div style={{ fontSize: 11, color: '#666', marginBottom: 10, marginTop: 4 }}>
-                Ingresa tu email y te enviaremos un enlace para restablecer tu contraseña.
-              </div>
-            )}
+            <Field label="Contraseña" type="password" value={password} onChange={setPassword} />
 
             <div style={{ display: 'flex', gap: 8, marginTop: 10, flexWrap: 'wrap' }}>
-              {mode === 'login' && (
-                <>
-                  <button
-                    onClick={onLogin}
-                    style={{
-                      background: 'linear-gradient(#e6f0ff,#cfe0ff)',
-                      border: '1px solid #7aa2e8',
-                      padding: '6px 12px',
-                      cursor: 'pointer'
-                    }}
-                  >Acceder</button>
-                  <button
-                    onClick={onLoginWithGoogle}
-                    style={{ background: 'linear-gradient(#fff,#eee)', border: '1px solid #7aa2e8', padding: '6px 12px', cursor: 'pointer' }}
-                  >Iniciar con Google</button>
-                </>
-              )}
-              {mode === 'register' && (
-                <button
-                  onClick={onRegister}
-                  style={{
-                    background: 'linear-gradient(#e6ffe6,#cfefcf)',
-                    border: '1px solid #7ae87a',
-                    padding: '6px 12px',
-                    cursor: 'pointer'
-                  }}
-                >Crear cuenta</button>
-              )}
-              {mode === 'reset' && (
-                <button
-                  onClick={onResetPassword}
-                  style={{
-                    background: 'linear-gradient(#ffe6cc,#ffcf9f)',
-                    border: '1px solid #e8a87a',
-                    padding: '6px 12px',
-                    cursor: 'pointer'
-                  }}
-                >Enviar correo de recuperación</button>
-              )}
+              <button
+                onClick={mode === 'login' ? onLogin : onRegister}
+                style={{
+                  background: 'linear-gradient(#e6f0ff,#cfe0ff)',
+                  border: '1px solid #7aa2e8',
+                  padding: '6px 12px',
+                  cursor: 'pointer'
+                }}
+              >{mode === 'login' ? 'Acceder' : 'Crear cuenta'}</button>
+              <button
+                onClick={onLoginWithGoogle}
+                style={{ background: 'linear-gradient(#fff,#eee)', border: '1px solid #7aa2e8', padding: '6px 12px', cursor: 'pointer' }}
+              >Iniciar con Google</button>
             </div>
 
-            <div style={{ marginTop: 10, fontSize: 12, display: 'flex', flexDirection: 'column', gap: 4 }}>
-              {mode === 'login' && (
-                <>
-                  <button onClick={() => changeMode('register')} style={{ background: 'transparent', border: 0, color: '#003399', cursor: 'pointer', textAlign: 'left' }}>
-                    Crear nueva cuenta...
-                  </button>
-                  <button onClick={() => changeMode('reset')} style={{ background: 'transparent', border: 0, color: '#c0392b', cursor: 'pointer', textAlign: 'left' }}>
-                    ¿Olvidaste tu contraseña?
-                  </button>
-                </>
-              )}
-              {mode === 'register' && (
-                <button onClick={() => changeMode('login')} style={{ background: 'transparent', border: 0, color: '#003399', cursor: 'pointer', textAlign: 'left' }}>
-                  Ya tengo cuenta. Iniciar sesión
-                </button>
-              )}
-              {mode === 'reset' && (
-                <button onClick={() => changeMode('login')} style={{ background: 'transparent', border: 0, color: '#003399', cursor: 'pointer', textAlign: 'left' }}>
-                  Volver al inicio de sesión
-                </button>
-              )}
+            <div style={{ marginTop: 10, fontSize: 12 }}>
+              <button onClick={() => setMode(mode === 'login' ? 'register' : 'login')} style={{ background: 'transparent', border: 0, color: '#003399', cursor: 'pointer' }}>
+                {mode === 'login' ? 'Crear nueva cuenta...' : 'Ya tengo cuenta. Iniciar sesión'}
+              </button>
             </div>
-            {message && <div style={{ color: message.includes('✅') ? '#27ae60' : '#c00', marginTop: 8, fontSize: 12 }}>{message}</div>}
+            {message && <div style={{ color: '#c00', marginTop: 8 }}>{message}</div>}
           </div>
         </div>
       </div>
