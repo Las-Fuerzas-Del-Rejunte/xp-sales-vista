@@ -341,11 +341,10 @@ function LoginModal({ onClose }) {
               </button>
               {mode === 'login' && (
                 <button 
-                  onClick={onResetPassword} 
-                  disabled={isResettingPassword}
-                  style={{ background: 'transparent', border: 0, color: '#003399', cursor: 'pointer', textAlign: 'left', opacity: isResettingPassword ? 0.6 : 1 }}
+                  onClick={() => setShowResetModal(true)} 
+                  style={{ background: 'transparent', border: 0, color: '#003399', cursor: 'pointer', textAlign: 'left' }}
                 >
-                  {isResettingPassword ? 'Enviando...' : 'Olvidé mi contraseña'}
+                  Olvidé mi contraseña
                 </button>
               )}
             </div>
@@ -353,6 +352,13 @@ function LoginModal({ onClose }) {
           </div>
         </div>
       </div>
+      {showResetModal && (
+        <ResetPasswordModal
+          onClose={() => setShowResetModal(false)}
+          onSubmit={onResetPassword}
+          initialEmail={email}
+        />
+      )}
     </div>
   );
 }
