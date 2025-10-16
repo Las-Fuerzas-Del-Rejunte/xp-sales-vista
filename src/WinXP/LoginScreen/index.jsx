@@ -18,12 +18,133 @@ function Field({ label, type, value, onChange }) {
   );
 }
 
+function ResetPasswordModal({ onClose, onSubmit, initialEmail }) {
+  const [resetEmail, setResetEmail] = useState(initialEmail || '');
+  const [isLoading, setIsLoading] = useState(false);
+
+  const handleSubmit = async () => {
+    setIsLoading(true);
+    await onSubmit(resetEmail);
+    setIsLoading(false);
+  };
+
+  const onKeyDown = (e) => {
+    if (e.key === 'Enter') {
+      handleSubmit();
+    }
+  };
+
+  return (
+    <div
+      style={{
+        position: 'fixed',
+        inset: 0,
+        background: 'rgba(0,0,0,0.5)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        zIndex: 10000,
+      }}
+      onClick={onClose}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          width: 420,
+          background: 'linear-gradient(180deg,#f5f3e6,#ece9d8)',
+          border: '2px solid #003399',
+          boxShadow: '0 10px 28px rgba(0,0,0,0.45), 0 0 0 2px #7ba7ff inset',
+          borderRadius: 4,
+        }}
+      >
+        <div
+          style={{
+            background: 'linear-gradient(180deg,#0a246a,#124a98)',
+            color: 'white',
+            padding: '10px 12px',
+            fontWeight: 'bold',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            borderTopLeftRadius: 2,
+            borderTopRightRadius: 2,
+          }}
+        >
+          <span>Restablecer contraseña</span>
+          <button
+            onClick={onClose}
+            style={{
+              background: 'transparent',
+              color: '#fff',
+              border: 0,
+              fontSize: 16,
+              cursor: 'pointer',
+            }}
+          >
+            ✕
+          </button>
+        </div>
+        <div style={{ padding: 16 }} onKeyDown={onKeyDown}>
+          <div style={{ marginBottom: 16, color: '#003399' }}>
+            Ingresa tu correo electrónico y te enviaremos un enlace para restablecer tu contraseña.
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', marginBottom: 16 }}>
+            <div style={{ width: 80, color: '#003399' }}>Email:</div>
+            <input
+              type="email"
+              value={resetEmail}
+              onChange={(e) => setResetEmail(e.target.value)}
+              placeholder="usuario@ejemplo.com"
+              style={{
+                flex: 1,
+                padding: '4px 6px',
+                border: '1px solid #7f9db9',
+                boxShadow: 'inset 1px 1px 2px rgba(0,0,0,0.1)',
+              }}
+              autoFocus
+            />
+          </div>
+          <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+            <button
+              onClick={handleSubmit}
+              disabled={isLoading || !resetEmail}
+              style={{
+                background: isLoading || !resetEmail ? '#d4d0c8' : 'linear-gradient(#e6f0ff,#cfe0ff)',
+                border: '1px solid #7aa2e8',
+                padding: '6px 20px',
+                cursor: isLoading || !resetEmail ? 'not-allowed' : 'pointer',
+                minWidth: 80,
+              }}
+            >
+              {isLoading ? 'Enviando...' : 'Enviar'}
+            </button>
+            <button
+              onClick={onClose}
+              disabled={isLoading}
+              style={{
+                background: 'linear-gradient(#fff,#eee)',
+                border: '1px solid #7aa2e8',
+                padding: '6px 20px',
+                cursor: isLoading ? 'not-allowed' : 'pointer',
+                minWidth: 80,
+              }}
+            >
+              Cancelar
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function LoginModal({ onClose }) {
   const { supabase, dispatch, ACTIONS } = useAppState();
   const [mode, setMode] = useState('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [message, setMessage] = useState('');
+  const [showResetModal, setShowResetModal] = useState(false);
 
   const translateError = errorMessage => {
     const dictionary = {
@@ -133,6 +254,19 @@ function LoginModal({ onClose }) {
       setMessage(translateError(e?.message || '')); 
     }
   }
+  async function onResetPassword(resetEmail) {
+    setMessage('');
+    const { error } = await supabase.auth.resetPasswordForEmail(resetEmail, {
+      redirectTo: `${window.location.origin}/`,
+    });
+    if (error) {
+      setMessage(translateError(error.message));
+      setShowResetModal(false);
+      return;
+    }
+    setShowResetModal(false);
+    setMessage('Te hemos enviado un correo para restablecer tu contraseña. Revisa tu bandeja de entrada.');
+  }
   function onKeyDown(e) {
     if (e.key === 'Enter') {
       if (mode === 'login') onLogin(); else onRegister();
@@ -201,10 +335,19 @@ function LoginModal({ onClose }) {
               >Iniciar con Google</button>
             </div>
 
-            <div style={{ marginTop: 10, fontSize: 12 }}>
-              <button onClick={() => setMode(mode === 'login' ? 'register' : 'login')} style={{ background: 'transparent', border: 0, color: '#003399', cursor: 'pointer' }}>
+            <div style={{ marginTop: 10, fontSize: 12, display: 'flex', flexDirection: 'column', gap: 4 }}>
+              <button onClick={() => setMode(mode === 'login' ? 'register' : 'login')} style={{ background: 'transparent', border: 0, color: '#003399', cursor: 'pointer', textAlign: 'left' }}>
                 {mode === 'login' ? 'Crear nueva cuenta...' : 'Ya tengo cuenta. Iniciar sesión'}
               </button>
+              {mode === 'login' && (
+                <button 
+                  onClick={onResetPassword} 
+                  disabled={isResettingPassword}
+                  style={{ background: 'transparent', border: 0, color: '#003399', cursor: 'pointer', textAlign: 'left', opacity: isResettingPassword ? 0.6 : 1 }}
+                >
+                  {isResettingPassword ? 'Enviando...' : 'Olvidé mi contraseña'}
+                </button>
+              )}
             </div>
             {message && <div style={{ color: '#c00', marginTop: 8 }}>{message}</div>}
           </div>
