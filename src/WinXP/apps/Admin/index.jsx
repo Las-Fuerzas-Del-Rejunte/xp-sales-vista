@@ -114,7 +114,7 @@ function Admin({ defaultTab = 'products', showLauncher = false, openCatalog }) {
   const isEmployee = EMPLOYEE_ROLES.has(effectiveRole);
   const userId = state.user?.id ?? null;
   const hasResolvedRole = !!roleOverride || !PLACEHOLDER_ROLES.has(baseRole) || roleLookupFailed;
-  const shouldPlayUnauthorizedSound = Boolean(userId) && roleLookupFailed && !isAdmin && !isEmployee;
+  const shouldPlayUnauthorizedSound = Boolean(userId) && hasResolvedRole && !isAdmin;
   const unauthorizedSoundPlayedRef = React.useRef(false);
   const lastUnauthorizedUserIdRef = React.useRef(null);
 
