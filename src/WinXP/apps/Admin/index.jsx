@@ -11,7 +11,26 @@ import dropdown from 'assets/windowsIcons/dropdown.png';
 import pullup from 'assets/windowsIcons/pullup.png';
 import windows from 'assets/windowsIcons/windows.png';
 import { WindowDropDowns } from 'components';
-import { saveProduct as apiSaveProduct, deleteProduct as apiDeleteProduct, saveBrand as apiSaveBrand, deleteBrand as apiDeleteBrand, saveCategory as apiSaveCategory, fetchSalesByEmployee, updateSale as apiUpdateSale, deleteSale as apiDeleteSale, saveLine as apiSaveLine, deleteLine as apiDeleteLine, checkLineExists as apiCheckLineExists } from 'lib/apiClient';
+
+//ESTO FUE MODIFICADO PARA REALIZAR LOS TESTS
+// import { saveProduct as apiSaveProduct, deleteProduct as apiDeleteProduct, saveBrand as apiSaveBrand, deleteBrand as apiDeleteBrand, saveCategory as apiSaveCategory, fetchSalesByEmployee, updateSale as apiUpdateSale, deleteSale as apiDeleteSale, saveLine as apiSaveLine, deleteLine as apiDeleteLine, checkLineExists as apiCheckLineExists } from 'lib/apiClient';
+import {
+  saveProduct,
+  deleteProduct,
+  saveBrand,
+  deleteBrand,
+  saveLine,
+  deleteLine,
+  saveCategory,
+} from './adminFunctions';
+
+import {
+  fetchSalesByEmployee,
+  updateSale as apiUpdateSale,
+  deleteSale as apiDeleteSale,
+  checkLineExists as apiCheckLineExists
+} from 'lib/apiClient';
+
 import mcDropDownData from 'WinXP/apps/MyComputer/dropDownData';
 import back from 'assets/windowsIcons/back.png';
 import forward from 'assets/windowsIcons/forward.png';
@@ -606,7 +625,9 @@ function Admin({ defaultTab = 'products', showLauncher = false, openCatalog }) {
     };
     
     try {
-      const savedId = await apiSaveLine(payload);
+      // const savedId = await apiSaveLine(payload);
+      //CAMBIO PARA TEST
+      await saveLine(payload, dispatch, ACTIONS, emitCatalogRefresh);
       
       const stateLine = {
         id: savedId || lineId,
@@ -654,7 +675,10 @@ function Admin({ defaultTab = 'products', showLauncher = false, openCatalog }) {
     }
     openConfirm('¿Eliminar línea?', async () => {
       try {
-        await apiDeleteLine(id);
+        // await apiDeleteLine(id);
+        //CAMBIO PARA TEST
+        await deleteLine(id, dispatch, ACTIONS, emitCatalogRefresh);
+        
         dispatch({ type: ACTIONS.DELETE_LINE, payload: id });
         setLastUpdate(new Date());
         emitCatalogRefresh();
@@ -760,10 +784,13 @@ function Admin({ defaultTab = 'products', showLauncher = false, openCatalog }) {
 
     try {
       setIsQuickCategoryCreating(true);
-      const savedCategory = await apiSaveCategory({
-        name: trimmedName,
-        description: '',
-      });
+      // const savedCategory = await apiSaveCategory({
+      //   name: trimmedName,
+      //   description: '',
+      // });
+      //CAMBIO PARA TEST
+      const savedCategory = await saveCategory(category, dispatch, ACTIONS, emitCatalogRefresh);
+
       const newCategory = {
         id: savedCategory?.id ?? null,
         name: savedCategory?.name ?? trimmedName,
@@ -1185,7 +1212,9 @@ function Admin({ defaultTab = 'products', showLauncher = false, openCatalog }) {
     }
     
     try {
-      const saved = await apiSaveProduct(payload);
+      // const saved = await apiSaveProduct(payload);
+      //CAMBIO DE TEST
+      await saveProduct(payload, dispatch, ACTIONS, emitCatalogRefresh);
       
       // Si se creó una nueva categoría, agregarla al estado global
       if (saved?.category?.id && !selectedCategory) {
@@ -1225,7 +1254,9 @@ function Admin({ defaultTab = 'products', showLauncher = false, openCatalog }) {
   async function deleteProduct(id) {
     openConfirm('¿Eliminar producto?', async () => {
       try {
-        await apiDeleteProduct(id);
+        // await apiDeleteProduct(id);
+        //CAMBIO PARA TEST
+        await deleteProduct(id, dispatch, ACTIONS, emitCatalogRefresh);
         dispatch({ type: ACTIONS.DELETE_PRODUCT, payload: id });
         setLastUpdate(new Date());
         emitCatalogRefresh();
@@ -1261,7 +1292,9 @@ function Admin({ defaultTab = 'products', showLauncher = false, openCatalog }) {
       logo: bLogo,
     };
     try {
-      const saved = await apiSaveBrand(payload);
+      // const saved = await apiSaveBrand(payload);
+      //CAMBIO PARA TEST
+      await saveBrand(payload, dispatch, ACTIONS, emitCatalogRefresh);
       const stateBrand = {
         id: saved?.id || payload.id,
         name: saved?.name ?? bName,
@@ -1288,7 +1321,9 @@ function Admin({ defaultTab = 'products', showLauncher = false, openCatalog }) {
     if (hasProducts) return;
     openConfirm('¿Eliminar marca?', async () => {
       try {
-        await apiDeleteBrand(id);
+        // await apiDeleteBrand(id);
+        //CAMBIO PARA TEST
+        await deleteBrand(id, dispatch, ACTIONS, emitCatalogRefresh);
         dispatch({ type: ACTIONS.DELETE_BRAND, payload: id });
         setLastUpdate(new Date());
         emitCatalogRefresh();
@@ -1743,7 +1778,7 @@ function Admin({ defaultTab = 'products', showLauncher = false, openCatalog }) {
                 {/* Acciones de creación */}
                 {tab === 'products' && (
                   <div className="com__content__left__card__row">
-                    <button style={btn()} onClick={showNewProductForm ? clearProductForm : showNewProduct}>
+                    <button data-testid="btn-new-product" style={btn()} onClick={showNewProductForm ? clearProductForm : showNewProduct}>
                       <img src={edit} alt="" style={{ width: '16px', height: '16px', marginRight: '4px' }} />
                       {showNewProductForm ? 'Ocultar formulario' : 'Nuevo producto'}
                     </button>
@@ -2678,6 +2713,7 @@ function Admin({ defaultTab = 'products', showLauncher = false, openCatalog }) {
                               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(200px,1fr))', gap: '8px' }}>
                                 <Field label="Categoria">
                                   <select
+                                    data-testid="select-category"
                                     value={pCategory}
                                     onChange={handleProductCategoryChange}
                                     style={{
@@ -2701,6 +2737,7 @@ function Admin({ defaultTab = 'products', showLauncher = false, openCatalog }) {
                                 </Field>
                                 <Field label="Marca">
                                   <select
+                                    data-testid="select-brand"
                                     value={pBrandId}
                                     onChange={handleProductBrandChange}
                                     style={{
@@ -2725,6 +2762,7 @@ function Admin({ defaultTab = 'products', showLauncher = false, openCatalog }) {
                                 </Field>
                                 <Field label="Línea">
                                   <select
+                                    data-testid="select-line"
                                     value={pLineId}
                                     onChange={handleProductLineChange}
                                     style={{
@@ -2766,6 +2804,7 @@ function Admin({ defaultTab = 'products', showLauncher = false, openCatalog }) {
                               }}>Precio</div>
                               <Field label="Precio ($)">
                                 <input
+                                  data-testid = 'input-precio'
                                   type="number"
                                   min="0"
                                   step="0.01"
@@ -2888,6 +2927,7 @@ function Admin({ defaultTab = 'products', showLauncher = false, openCatalog }) {
                               marginTop: '12px'
                             }}>
                               <button
+                                data-testid="save-product-btn"
                                 style={{
                                   padding: '6px 12px',
                                   background: canSubmitProduct ? 'linear-gradient(to bottom, #4CAF50 0%, #45a049 100%)' : 'linear-gradient(to bottom, #f0f0f0 0%, #d0d0d0 100%)',
